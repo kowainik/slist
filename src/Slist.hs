@@ -1,18 +1,34 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Slist
-       ( Size
+       ( -- * Types
+         Size
        , Slist
+         -- ** Smart constructors
        , slist
        , infiniteSlist
        , one
+         -- * Basic functions
+       , size
+       , isNull
+       , head
+       , safeHead
+       , last
+       , safeLast
+       , init
+       , tail
+       , uncons
+
        , map
        ) where
 
 import Control.Applicative (Alternative (empty, (<|>)), liftA2)
-import Prelude hiding (map)
+import Prelude hiding (head, init, last, map, tail)
 
-import qualified Prelude as P (map)
+import qualified Data.Foldable as F (Foldable (..))
+import qualified GHC.Exts as L (IsList (..))
+import qualified Prelude as P
 
 
 data Size
@@ -54,7 +70,7 @@ instance Num Size where
     {-# INLINE fromInteger #-}
 
 data Slist a = Slist
-    { sList :: ![a]
+    { sList :: [a]
     , sSize :: !Size
     } deriving (Show, Read)
 
@@ -159,10 +175,32 @@ instance Foldable Slist where
     product = product . sList
     {-# INLINE product #-}
 
+    null :: Slist a -> Bool
+    null = isNull
+    {-# INLINE null #-}
+
+    length :: Slist a -> Int
+    length = size
+    {-# INLINE length #-}
+
+    toList :: Slist a -> [a]
+    toList = sList
+    {-# INLINE toList #-}
+
 instance Traversable Slist where
     traverse :: (Applicative f) => (a -> f b) -> Slist a -> f (Slist b)
     traverse f (Slist l s) = (\x -> Slist x s) <$> traverse f l
     {-# INLINE traverse #-}
+
+instance L.IsList (Slist a) where
+    type (Item (Slist a)) = a
+    fromList :: [a] -> Slist a
+    fromList = slist
+    {-# INLINE fromList #-}
+
+    toList :: Slist a -> [a]
+    toList = sList
+    {-# INLINE toList #-}
 
 slist :: [a] -> Slist a
 slist l = Slist l (Size $ length l)
@@ -175,6 +213,69 @@ infiniteSlist l = Slist l Infinity
 one :: a -> Slist a
 one a = Slist [a] 1
 {-# INLINE one #-}
+
+----------------------------------------------------------------------------
+-- Basic functions
+----------------------------------------------------------------------------
+
+{- | Returns the size/length of a structure as an 'Int'.
+Runs in @O(1)@ time. On infinite lists returns the 'Int's 'maxBound'.
+
+>>> size $ one 42
+1
+>>> size $ slist [1..3]
+3
+>>> size $ infiniteSlist [1..]
+9223372036854775807
+-}
+size :: Slist a -> Int
+size Slist{..} = case sSize of
+    Infinity -> maxBound
+    Size n   -> n
+{-# INLINE size #-}
+
+isNull :: Slist a -> Bool
+isNull = (== 0) . size
+{-# INLINE isNull #-}
+
+head :: Slist a -> a
+head = P.head . sList
+{-# INLINE head #-}
+
+safeHead :: Slist a -> Maybe a
+safeHead Slist{..} = case sSize of
+    Size 0 -> Nothing
+    _      -> Just $ P.head sList
+{-# INLINE safeHead #-}
+
+last :: Slist a -> a
+last = P.last . sList
+{-# INLINE last #-}
+
+safeLast :: Slist a -> Maybe a
+safeLast Slist{..} = case sSize of
+    Infinity -> Nothing
+    Size 0   -> Nothing
+    _        -> Just $ P.last sList
+{-# INLINE safeLast #-}
+
+tail :: Slist a -> Slist a
+tail Slist{..} = case sSize of
+    Size 0 -> mempty
+    _      -> Slist (drop 1 sList) (sSize - 1)
+{-# INLINE tail #-}
+
+init :: Slist a -> Slist a
+init sl@Slist{..} = case sSize of
+    Infinity -> sl
+    Size 0   -> mempty
+    _        -> Slist (P.init sList) (sSize - 1)
+{-# INLINE init #-}
+
+uncons :: Slist a -> Maybe (a, Slist a)
+uncons (Slist [] _)     = Nothing
+uncons (Slist (x:xs) s) = Just (x, Slist xs $ s - 1)
+{-# INLINE uncons #-}
 
 map :: (a -> b) -> Slist a -> Slist b
 map f Slist{..} = Slist (P.map f sList) sSize
