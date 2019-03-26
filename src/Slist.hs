@@ -46,14 +46,23 @@ module Slist
          -- ** Scans
          -- ** Accumulating maps
          -- ** Unfolding
+
+         -- * Subslists
+         -- ** Extracting
+       , take
+       , drop
+       , splitAt
+       , takeWhile
        ) where
 
 import Control.Applicative (Alternative (empty, (<|>)), liftA2)
 #if ( __GLASGOW_HASKELL__ == 802 )
 import Data.Semigroup (Semigroup (..))
 #endif
-import Prelude hiding (concat, concatMap, cycle, head, init, iterate, last, map, repeat, replicate,
-                reverse, tail)
+import Prelude hiding (concat, concatMap, cycle, drop, head, init, iterate, last, map, repeat,
+                replicate, reverse, splitAt, tail, take, takeWhile)
+
+import Slist.Size (Size (..), sizeMin)
 
 import qualified Data.Foldable as F (Foldable (..))
 import qualified Data.List as L
@@ -61,47 +70,9 @@ import qualified GHC.Exts as L (IsList (..))
 import qualified Prelude as P
 
 
-data Size
-    = Size !Int
-    | Infinity
-    deriving (Show, Read, Eq, Ord)
-
-instance Num Size where
-    (+) :: Size -> Size -> Size
-    Infinity + _ = Infinity
-    _ + Infinity = Infinity
-    (Size x) + (Size y) = Size (x + y)
-    {-# INLINE (+) #-}
-
-    (-) :: Size -> Size -> Size
-    Infinity - _ = Infinity
-    _ - Infinity = Infinity
-    (Size x) - (Size y) = Size (x - y)
-    {-# INLINE (-) #-}
-
-    (*) :: Size -> Size -> Size
-    Infinity * _ = Infinity
-    _ * Infinity = Infinity
-    (Size x) * (Size y) = Size (x * y)
-    {-# INLINE (*) #-}
-
-    abs :: Size -> Size
-    abs Infinity = Infinity
-    abs (Size x) = Size $ abs x
-    {-# INLINE abs #-}
-
-    signum :: Size -> Size
-    signum Infinity = Infinity
-    signum (Size x) = Size (signum x)
-    {-# INLINE signum #-}
-
-    fromInteger :: Integer -> Size
-    fromInteger = Size . fromInteger
-    {-# INLINE fromInteger #-}
-
 data Slist a = Slist
     { sList :: [a]
-    , sSize :: !Size
+    , sSize :: Size
     } deriving (Show, Read)
 
 instance (Eq a) => Eq (Slist a) where
@@ -314,7 +285,7 @@ safeLast Slist{..} = case sSize of
 tail :: Slist a -> Slist a
 tail Slist{..} = case sSize of
     Size 0 -> mempty
-    _      -> Slist (drop 1 sList) (sSize - 1)
+    _      -> Slist (P.drop 1 sList) (sSize - 1)
 {-# INLINE tail #-}
 
 init :: Slist a -> Slist a
@@ -416,4 +387,47 @@ concatMap f = foldMap f
 -- TODO: Scans
 -- TODO: accumulating slists
 
--- Infinite slists
+----------------------------------------------------------------------------
+-- Sublists
+----------------------------------------------------------------------------
+
+take :: Int -> Slist a -> Slist a
+take i sl@Slist{..} =
+    if Size i >= sSize
+    then sl
+    else Slist
+        { sList = P.take i sList
+        , sSize = sizeMin i sSize
+        }
+{-# INLINE take #-}
+
+drop :: Int -> Slist a -> Slist a
+drop i sl@Slist{..}
+    | i <= 0 = sl
+    | Size i >= sSize = mempty
+    | otherwise = Slist
+        { sList = P.drop i sList
+        , sSize = max (Size 0) $ sSize - (Size i)
+        }
+{-# INLINE drop #-}
+
+splitAt :: Int -> Slist a -> (Slist a, Slist a)
+splitAt i sl@Slist{..}
+    | i <= 0 = (mempty, sl)
+    | Size i >= sSize = (sl, mempty)
+    | otherwise =
+        let (l1, l2) = P.splitAt i sList
+            s2 = sSize - Size i
+        in (Slist l1 $ Size i, Slist l2 s2)
+{-# INLINE splitAt #-}
+
+takeWhile :: forall a . (a -> Bool) -> Slist a -> Slist a
+takeWhile p Slist{..} = let (s, l) = go 0 sList in Slist l $ Size s
+  where
+    go :: Int -> [a] -> (Int, [a])
+    go !n [] = (n, [])
+    go !n (x:xs) =
+        if p x
+        then let (i, l) = go (n + 1) xs in (i, x:l)
+        else (n, [])
+{-# INLINE takeWhile #-}
