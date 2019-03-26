@@ -20,13 +20,22 @@ module Slist
        , tail
        , uncons
 
+         -- * Transformations
        , map
+       , reverse
+       , safeReverse
+       , intersperse
+       , intercalate
+       , transpose
+       , subsequences
+       , permutations
        ) where
 
 import Control.Applicative (Alternative (empty, (<|>)), liftA2)
-import Prelude hiding (head, init, last, map, tail)
+import Prelude hiding (head, init, last, map, reverse, tail)
 
 import qualified Data.Foldable as F (Foldable (..))
+import qualified Data.List as L
 import qualified GHC.Exts as L (IsList (..))
 import qualified Prelude as P
 
@@ -277,6 +286,70 @@ uncons (Slist [] _)     = Nothing
 uncons (Slist (x:xs) s) = Just (x, Slist xs $ s - 1)
 {-# INLINE uncons #-}
 
+----------------------------------------------------------------------------
+-- Transformations
+----------------------------------------------------------------------------
+
 map :: (a -> b) -> Slist a -> Slist b
 map f Slist{..} = Slist (P.map f sList) sSize
 {-# INLINE map #-}
+
+reverse :: Slist a -> Slist a
+reverse Slist{..} = Slist (L.reverse sList) sSize
+{-# INLINE reverse #-}
+
+safeReverse :: Slist a -> Slist a
+safeReverse sl@(Slist _ Infinity) = sl
+safeReverse sl                    = reverse sl
+{-# INLINE safeReverse #-}
+
+intersperse :: a -> Slist a -> Slist a
+intersperse _ sl@(Slist _ (Size 0)) = sl
+intersperse a Slist{..}             = Slist (L.intersperse a sList) (2 * sSize - 1)
+{-# INLINE intersperse #-}
+
+intercalate :: Slist a -> Slist (Slist a) -> Slist a
+intercalate x = foldr (<>) mempty . intersperse x
+{-# INLINE intercalate #-}
+
+{- | The transpose function transposes the rows and columns of its argument. For example,
+
+>>> transpose [[1,2,3],[4,5,6]]
+[[1,4],[2,5],[3,6]]
+If some of the rows are shorter than the following rows, their elements are skipped:
+
+>>> transpose [[10,11],[20],[],[30,31,32]]
+[[10,20,30],[11,31],[32]]
+-}
+transpose :: Slist (Slist a) -> Slist (Slist a)
+transpose (Slist l _) = Slist
+    { sList = P.map slist $ L.transpose $ P.map sList l
+    , sSize = maximum $ P.map sSize l
+    }
+{-# INLINE transpose #-}
+
+subsequences :: Slist a -> Slist (Slist a)
+subsequences Slist{..} = Slist
+    { sList = P.map slist $ L.subsequences sList
+    , sSize = newSize sSize
+    }
+  where
+    newSize :: Size -> Size
+    newSize Infinity = Infinity
+    newSize (Size n) = Size $ 2 ^ (toInteger n)
+{-# INLINE subsequences #-}
+
+permutations :: Slist a -> Slist (Slist a)
+permutations (Slist l s) = Slist
+    { sList = P.map (\a -> Slist a s) $ L.permutations l
+    , sSize = fact s
+    }
+  where
+    fact :: Size -> Size
+    fact Infinity = Infinity
+    fact (Size n) = Size $ go 1 n
+
+    go :: Int -> Int -> Int
+    go !acc 0 = acc
+    go !acc n = go (acc * n) (n - 1)
+{-# INLINE permutations #-}
