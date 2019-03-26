@@ -29,10 +29,14 @@ module Slist
        , transpose
        , subsequences
        , permutations
+
+         -- *  Reducing slists (folds)
+       , concat
+       , concatMap
        ) where
 
 import Control.Applicative (Alternative (empty, (<|>)), liftA2)
-import Prelude hiding (head, init, last, map, reverse, tail)
+import Prelude hiding (concat, concatMap, head, init, last, map, reverse, tail)
 
 import qualified Data.Foldable as F (Foldable (..))
 import qualified Data.List as L
@@ -177,11 +181,11 @@ instance Foldable Slist where
     {-# INLINE minimum #-}
 
     sum :: (Num a) => Slist a -> a
-    sum = sum . sList
+    sum = F.foldl' (+) 0 . sList
     {-# INLINE sum #-}
 
     product :: (Num a) => Slist a -> a
-    product = product . sList
+    product = F.foldl' (*) 1 . sList
     {-# INLINE product #-}
 
     null :: Slist a -> Bool
@@ -353,3 +357,15 @@ permutations (Slist l s) = Slist
     go !acc 0 = acc
     go !acc n = go (acc * n) (n - 1)
 {-# INLINE permutations #-}
+
+----------------------------------------------------------------------------
+-- Reducing slists (folds)
+----------------------------------------------------------------------------
+
+concat :: Foldable t => t (Slist a) -> Slist a
+concat = foldr (<>) mempty
+{-# INLINE concat #-}
+
+concatMap :: Foldable t => (a -> Slist b) -> t a -> Slist b
+concatMap f = foldMap f
+{-# INLINE concatMap #-}
