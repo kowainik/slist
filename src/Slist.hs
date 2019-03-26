@@ -9,6 +9,11 @@ module Slist
        , slist
        , infiniteSlist
        , one
+       , iterate
+       , iterate'
+       , repeat
+       , replicate
+       , cycle
          -- * Basic functions
        , size
        , isNull
@@ -33,10 +38,16 @@ module Slist
          -- *  Reducing slists (folds)
        , concat
        , concatMap
+
+         -- * Building slists
+         -- ** Scans
+         -- ** Accumulating maps
+         -- ** Unfolding
        ) where
 
 import Control.Applicative (Alternative (empty, (<|>)), liftA2)
-import Prelude hiding (concat, concatMap, head, init, last, map, reverse, tail)
+import Prelude hiding (concat, concatMap, cycle, head, init, iterate, last, map, repeat, replicate,
+                reverse, tail)
 
 import qualified Data.Foldable as F (Foldable (..))
 import qualified Data.List as L
@@ -227,6 +238,26 @@ one :: a -> Slist a
 one a = Slist [a] 1
 {-# INLINE one #-}
 
+iterate :: (a -> a) -> a -> Slist a
+iterate f = infiniteSlist . L.iterate f
+{-# INLINE iterate #-}
+
+iterate' :: (a -> a) -> a -> Slist a
+iterate' f = infiniteSlist . L.iterate' f
+{-# INLINE iterate' #-}
+
+repeat :: a -> Slist a
+repeat = infiniteSlist . L.repeat
+{-# INLINE repeat #-}
+
+replicate :: Int -> a -> Slist a
+replicate n x = Slist (L.replicate n x) $ Size n
+{-# INLINE replicate #-}
+
+cycle :: Slist a -> Slist a
+cycle Slist{..} = infiniteSlist $ L.cycle sList
+{-# INLINE cycle #-}
+
 ----------------------------------------------------------------------------
 -- Basic functions
 ----------------------------------------------------------------------------
@@ -369,3 +400,12 @@ concat = foldr (<>) mempty
 concatMap :: Foldable t => (a -> Slist b) -> t a -> Slist b
 concatMap f = foldMap f
 {-# INLINE concatMap #-}
+
+----------------------------------------------------------------------------
+-- Building lists
+----------------------------------------------------------------------------
+
+-- TODO: Scans
+-- TODO: accumulating slists
+
+-- Infinite slists
