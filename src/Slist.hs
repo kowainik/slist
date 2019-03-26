@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP          #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Slist
@@ -10,7 +11,9 @@ module Slist
        , infiniteSlist
        , one
        , iterate
+#if ( __GLASGOW_HASKELL__ > 802 )
        , iterate'
+#endif
        , repeat
        , replicate
        , cycle
@@ -46,6 +49,9 @@ module Slist
        ) where
 
 import Control.Applicative (Alternative (empty, (<|>)), liftA2)
+#if ( __GLASGOW_HASKELL__ == 802 )
+import Data.Semigroup (Semigroup (..))
+#endif
 import Prelude hiding (concat, concatMap, cycle, head, init, iterate, last, map, repeat, replicate,
                 reverse, tail)
 
@@ -242,9 +248,11 @@ iterate :: (a -> a) -> a -> Slist a
 iterate f = infiniteSlist . L.iterate f
 {-# INLINE iterate #-}
 
+#if ( __GLASGOW_HASKELL__ > 802 )
 iterate' :: (a -> a) -> a -> Slist a
 iterate' f = infiniteSlist . L.iterate' f
 {-# INLINE iterate' #-}
+#endif
 
 repeat :: a -> Slist a
 repeat = infiniteSlist . L.repeat
