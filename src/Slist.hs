@@ -18,6 +18,7 @@ module Slist
        , replicate
        , cycle
          -- * Basic functions
+       , len
        , size
        , isNull
        , head
@@ -53,16 +54,34 @@ module Slist
        , drop
        , splitAt
        , takeWhile
+       , dropWhile
+       , span
+       , break
+       , stripPrefix
+       , safeStripPrefix
+       , group
+       , groupBy
+       , inits
+       , tails
+         -- ** Predicates
+       , isPrefixOf
+       , safeIsPrefixOf
+       , isSuffixOf
+       , safeIsSuffixOf
+       , isInfixOf
+       , safeIsInfixOf
+       , isSubsequenceOf
+       , safeIsSubsequenceOf
        ) where
 
 import Control.Applicative (Alternative (empty, (<|>)), liftA2)
 #if ( __GLASGOW_HASKELL__ == 802 )
 import Data.Semigroup (Semigroup (..))
 #endif
-import Prelude hiding (concat, concatMap, cycle, drop, head, init, iterate, last, map, repeat,
-                replicate, reverse, splitAt, tail, take, takeWhile)
+import Prelude hiding (break, concat, concatMap, cycle, drop, dropWhile, head, init, iterate, last,
+                map, repeat, replicate, reverse, span, splitAt, tail, take, takeWhile)
 
-import Slist.Size (Size (..), sizeMin)
+import Slist.Size (Size (..), sizeMin, sizes)
 
 import qualified Data.Foldable as F (Foldable (..))
 import qualified Data.List as L
@@ -181,7 +200,7 @@ instance Foldable Slist where
     {-# INLINE null #-}
 
     length :: Slist a -> Int
-    length = size
+    length = len
     {-# INLINE length #-}
 
     toList :: Slist a -> [a]
@@ -241,20 +260,24 @@ cycle Slist{..} = infiniteSlist $ L.cycle sList
 -- Basic functions
 ----------------------------------------------------------------------------
 
-{- | Returns the size/length of a structure as an 'Int'.
+{- | Returns the length of a structure as an 'Int'.
 Runs in @O(1)@ time. On infinite lists returns the 'Int's 'maxBound'.
 
->>> size $ one 42
+>>> len $ one 42
 1
->>> size $ slist [1..3]
+>>> len $ slist [1..3]
 3
->>> size $ infiniteSlist [1..]
+>>> len $ infiniteSlist [1..]
 9223372036854775807
 -}
-size :: Slist a -> Int
-size Slist{..} = case sSize of
+len :: Slist a -> Int
+len Slist{..} = case sSize of
     Infinity -> maxBound
     Size n   -> n
+{-# INLINE len #-}
+
+size :: Slist a -> Size
+size = sSize
 {-# INLINE size #-}
 
 isNull :: Slist a -> Bool
@@ -431,3 +454,117 @@ takeWhile p Slist{..} = let (s, l) = go 0 sList in Slist l $ Size s
         then let (i, l) = go (n + 1) xs in (i, x:l)
         else (n, [])
 {-# INLINE takeWhile #-}
+
+dropWhile :: forall a . (a -> Bool) -> Slist a -> Slist a
+dropWhile p Slist{..} = let (s, l) = go 0 sList in Slist l $ max (Size 0) (sSize - Size s)
+  where
+    go :: Int -> [a] -> (Int, [a])
+    go !n [] = (n, [])
+    go !n (x:xs) =
+        if p x
+        then go (n + 1) xs
+        else (n, x:xs)
+{-# INLINE dropWhile #-}
+
+span :: forall a . (a -> Bool) -> Slist a -> (Slist a, Slist a)
+span p Slist{..} = let (s, l, r) = go 0 sList in
+    ( Slist l $ Size s
+    , Slist r $ max (Size 0) (sSize - Size s)
+    )
+  where
+    go :: Int -> [a] -> (Int, [a], [a])
+    go !n [] = (n, [], [])
+    go !n (x:xs) =
+        if p x
+        then let (s, l, r) = go (n + 1) xs in (s, x:l, r)
+        else (n, [], x:xs)
+{-# INLINE span #-}
+
+break :: (a -> Bool) -> Slist a -> (Slist a, Slist a)
+break p = span (not . p)
+{-# INLINE break #-}
+
+stripPrefix :: Eq a => Slist a -> Slist a -> Maybe (Slist a)
+stripPrefix (Slist l1 s1) f@(Slist l2 s2)
+    | s1 == Size 0 = Just f
+    | s1 > s2 = Nothing
+    | otherwise = (\l -> Slist l $ s2 - s1) <$> L.stripPrefix l1 l2
+{-# INLINE stripPrefix #-}
+
+safeStripPrefix :: Eq a => Slist a -> Slist a -> Maybe (Slist a)
+safeStripPrefix (Slist _ Infinity) (Slist _ Infinity) = Nothing
+safeStripPrefix sl1 sl2                               = stripPrefix sl1 sl2
+{-# INLINE safeStripPrefix #-}
+
+group :: Eq a => Slist a -> Slist (Slist a)
+group = groupBy (==)
+{-# INLINE group #-}
+
+groupBy :: (a -> a -> Bool) -> Slist a -> Slist (Slist a)
+groupBy p (Slist l Infinity) = infiniteSlist $ P.map slist $ L.groupBy p l
+groupBy p Slist{..}          = slist $ P.map slist $ L.groupBy p sList
+{-# INLINE groupBy #-}
+
+inits :: Slist a -> Slist (Slist a)
+inits (Slist l s) = Slist
+    { sList = zipWith Slist (L.inits l) $ sizes s
+    , sSize = s + 1
+    }
+{-# INLINE inits #-}
+
+tails :: Slist a -> Slist (Slist a)
+tails (Slist l Infinity) = infiniteSlist $ P.map infiniteSlist (L.tails l)
+tails (Slist l s@(Size n)) = Slist
+    { sList = zipWith (\li i -> Slist li $ Size i) (L.tails l) [n, n - 1 .. 0]
+    , sSize = s + 1
+    }
+{-# INLINE tails #-}
+
+
+isPrefixOf :: Eq a => Slist a -> Slist a -> Bool
+isPrefixOf (Slist l1 s1) (Slist l2 s2)
+    | s1 > s2 = False
+    | otherwise = L.isPrefixOf l1 l2
+{-# INLINE isPrefixOf #-}
+
+safeIsPrefixOf :: Eq a => Slist a -> Slist a -> Bool
+safeIsPrefixOf sl1@(Slist _ s1) sl2@(Slist _ s2)
+    | s1 == Infinity && s2 == Infinity = False
+    | otherwise = isPrefixOf sl1 sl2
+{-# INLINE safeIsPrefixOf #-}
+
+isSuffixOf :: Eq a => Slist a -> Slist a -> Bool
+isSuffixOf (Slist l1 s1) (Slist l2 s2)
+    | s1 > s2 = False
+    | otherwise = L.isSuffixOf l1 l2
+{-# INLINE isSuffixOf #-}
+
+safeIsSuffixOf :: Eq a => Slist a -> Slist a -> Bool
+safeIsSuffixOf sl1 sl2@(Slist _ s2)
+    | s2 == Infinity = False
+    | otherwise = isSuffixOf sl1 sl2
+{-# INLINE safeIsSuffixOf #-}
+
+isInfixOf :: Eq a => Slist a -> Slist a -> Bool
+isInfixOf (Slist l1 s1) (Slist l2 s2)
+    | s1 > s2 = False
+    | otherwise = L.isInfixOf l1 l2
+{-# INLINE isInfixOf #-}
+
+safeIsInfixOf :: Eq a => Slist a -> Slist a -> Bool
+safeIsInfixOf sl1@(Slist _ s1) sl2@(Slist _ s2)
+    | s1 == Infinity && s2 == Infinity = False
+    | otherwise = isInfixOf sl1 sl2
+{-# INLINE safeIsInfixOf #-}
+
+isSubsequenceOf :: Eq a => Slist a -> Slist a -> Bool
+isSubsequenceOf (Slist l1 s1) (Slist l2 s2)
+    | s1 > s2 = False
+    | otherwise = L.isSubsequenceOf l1 l2
+{-# INLINE isSubsequenceOf #-}
+
+safeIsSubsequenceOf :: Eq a => Slist a -> Slist a -> Bool
+safeIsSubsequenceOf sl1@(Slist _ s1) sl2@(Slist _ s2)
+    | s1 == Infinity && s2 == Infinity = False
+    | otherwise = isSubsequenceOf sl1 sl2
+{-# INLINE safeIsSubsequenceOf #-}

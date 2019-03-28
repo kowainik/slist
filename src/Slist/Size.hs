@@ -1,6 +1,7 @@
 module Slist.Size
        ( Size (..)
        , sizeMin
+       , sizes
        ) where
 
 
@@ -13,7 +14,11 @@ instance Num Size where
     (+) :: Size -> Size -> Size
     Infinity + _ = Infinity
     _ + Infinity = Infinity
-    (Size x) + (Size y) = Size (x + y)
+    (Size x) + (Size y) = let res = x + y in
+        -- checking on the overflowing
+        if res < 0
+        then Infinity
+        else Size res
     {-# INLINE (+) #-}
 
     (-) :: Size -> Size -> Size
@@ -42,8 +47,20 @@ instance Num Size where
     fromInteger = Size . fromInteger
     {-# INLINE fromInteger #-}
 
+instance Bounded Size where
+    minBound :: Size
+    minBound = Size 0
+
+    maxBound :: Size
+    maxBound = Infinity
+
 -- | Returns the minimum size.
 sizeMin :: Int -> Size -> Size
 sizeMin i s = Size $ max 0 $ case s of
     Infinity -> i
     Size n   -> min i n
+
+-- | Returns the list of sizes from zero to given one (including).
+sizes :: Size -> [Size]
+sizes (Size n) = map Size [0..n]
+sizes Infinity = map Size [0..maxBound] ++ [Infinity]
