@@ -23,10 +23,11 @@ source-repository head
 library
   hs-source-dirs:      src
   exposed-modules:     Slist
-                       
+                         Slist.Size
+
 
   build-depends:       base >= 4.10.1.0 && < 4.13
-                     
+
 
   ghc-options:         -Wall
                        -Wincomplete-uni-patterns
@@ -58,7 +59,7 @@ test-suite slist-test
 
   build-depends:       base >= 4.10.1.0 && < 4.13
                      , slist
-                     
+
 
   ghc-options:         -Wall
                        -threaded
