@@ -72,14 +72,23 @@ module Slist
        , safeIsInfixOf
        , isSubsequenceOf
        , safeIsSubsequenceOf
+
+         -- * Searching
+         -- ** Searching by equality
+       , lookup
+         -- ** Searching with a predicate
+       , filter
+       , partition
        ) where
 
 import Control.Applicative (Alternative (empty, (<|>)), liftA2)
+import Data.Bifunctor (bimap, first, second)
 #if ( __GLASGOW_HASKELL__ == 802 )
 import Data.Semigroup (Semigroup (..))
 #endif
-import Prelude hiding (break, concat, concatMap, cycle, drop, dropWhile, head, init, iterate, last,
-                map, repeat, replicate, reverse, span, splitAt, tail, take, takeWhile)
+import Prelude hiding (break, concat, concatMap, cycle, drop, dropWhile, filter, head, init,
+                iterate, last, lookup, map, repeat, replicate, reverse, span, splitAt, tail, take,
+                takeWhile)
 
 import Slist.Size (Size (..), sizeMin, sizes)
 
@@ -175,6 +184,7 @@ instance Foldable Slist where
     foldr f b = foldr f b . sList
     {-# INLINE foldr #-}
 
+    -- | Is the element in the structure?
     elem :: (Eq a) => a -> Slist a -> Bool
     elem a = elem a . sList
     {-# INLINE elem #-}
@@ -568,3 +578,37 @@ safeIsSubsequenceOf sl1@(Slist _ s1) sl2@(Slist _ s2)
     | s1 == Infinity && s2 == Infinity = False
     | otherwise = isSubsequenceOf sl1 sl2
 {-# INLINE safeIsSubsequenceOf #-}
+
+----------------------------------------------------------------------------
+-- Searching
+----------------------------------------------------------------------------
+
+lookup :: Eq a => a -> Slist (a, b) -> Maybe b
+lookup a = L.lookup a . sList
+{-# INLINE lookup #-}
+
+filter :: forall a . (a -> Bool) -> Slist a -> Slist a
+filter p (Slist l Infinity) = infiniteSlist $ L.filter p l
+filter p Slist{..} = let (newS, newL) = go 0 sList in
+    Slist newL (Size newS)
+  where
+    go :: Int -> [a] -> (Int, [a])
+    go !n [] = (n, [])
+    go n (x:xs) =
+        if p x
+        then second (x:) $ go (n + 1) xs
+        else go n xs
+{-# INLINE filter #-}
+
+partition :: forall a . (a -> Bool) -> Slist a -> (Slist a, Slist a)
+partition p (Slist l Infinity) = bimap infiniteSlist infiniteSlist $ L.partition p l
+partition p Slist{..} = let (s1, l1, l2) = go 0 sList in
+    (Slist l1 $ Size s1, Slist l2 $ sSize - Size s1)
+  where
+    go :: Int -> [a] -> (Int, [a], [a])
+    go !n [] = (n, [], [])
+    go n (x:xs) =
+        if p x
+        then first (x:) $ go (n + 1) xs
+        else second (x:) $ go n xs
+{-# INLINE partition #-}
