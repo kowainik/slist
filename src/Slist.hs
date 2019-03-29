@@ -79,6 +79,14 @@ module Slist
          -- ** Searching with a predicate
        , filter
        , partition
+
+         -- * Indexing
+       , at
+       , unsafeAt
+       , elemIndex
+       , elemIndices
+       , findIndex
+       , findIndices
        ) where
 
 import Control.Applicative (Alternative (empty, (<|>)), liftA2)
@@ -612,3 +620,42 @@ partition p Slist{..} = let (s1, l1, l2) = go 0 sList in
         then first (x:) $ go (n + 1) xs
         else second (x:) $ go n xs
 {-# INLINE partition #-}
+
+----------------------------------------------------------------------------
+-- Indexing
+----------------------------------------------------------------------------
+
+at :: Int -> Slist a -> Maybe a
+at n Slist{..}
+    | n < 0 || Size n >= sSize = Nothing
+    | otherwise = Just $ sList L.!! n
+{-# INLINE at #-}
+
+unsafeAt :: Int -> Slist a -> a
+unsafeAt n Slist{..} = sList L.!! n
+{-# INLINE unsafeAt #-}
+
+elemIndex :: Eq a => a -> Slist a -> Maybe Int
+elemIndex a = L.elemIndex a . sList
+{-# INLINE elemIndex #-}
+
+elemIndices :: Eq a => a -> Slist a -> Slist Int
+elemIndices a = findIndices (a ==)
+{-# INLINE elemIndices #-}
+
+findIndex :: (a -> Bool) -> Slist a -> Maybe Int
+findIndex p = L.findIndex p . sList
+{-# INLINE findIndex #-}
+
+findIndices :: forall a . (a -> Bool) -> Slist a -> Slist Int
+findIndices p (Slist l Infinity) = infiniteSlist $ L.findIndices p l
+findIndices p Slist{..} = let (newS, newL) = go 0 0 sList in
+    Slist newL (Size newS)
+  where
+    go :: Int -> Int -> [a] -> (Int, [Int])
+    go !n _ [] = (n, [])
+    go n !cur (x:xs) =
+        if p x
+        then second (cur:) $ go (n + 1) (cur + 1) xs
+        else go n (cur + 1) xs
+{-# INLINE findIndices #-}
