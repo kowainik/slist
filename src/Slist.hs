@@ -87,6 +87,14 @@ module Slist
        , elemIndices
        , findIndex
        , findIndices
+
+         -- * Zipping and unzipping
+       , zip
+       , zip3
+       , zipWith
+       , zipWith3
+       , unzip
+       , unzip3
        ) where
 
 import Control.Applicative (Alternative (empty, (<|>)), liftA2)
@@ -96,7 +104,7 @@ import Data.Semigroup (Semigroup (..))
 #endif
 import Prelude hiding (break, concat, concatMap, cycle, drop, dropWhile, filter, head, init,
                 iterate, last, lookup, map, repeat, replicate, reverse, span, splitAt, tail, take,
-                takeWhile)
+                takeWhile, unzip, unzip3, zip, zip3, zipWith, zipWith3)
 
 import Slist.Size (Size (..), sizeMin, sizes)
 
@@ -525,7 +533,7 @@ groupBy p Slist{..}          = slist $ P.map slist $ L.groupBy p sList
 
 inits :: Slist a -> Slist (Slist a)
 inits (Slist l s) = Slist
-    { sList = zipWith Slist (L.inits l) $ sizes s
+    { sList = L.zipWith Slist (L.inits l) $ sizes s
     , sSize = s + 1
     }
 {-# INLINE inits #-}
@@ -533,7 +541,7 @@ inits (Slist l s) = Slist
 tails :: Slist a -> Slist (Slist a)
 tails (Slist l Infinity) = infiniteSlist $ P.map infiniteSlist (L.tails l)
 tails (Slist l s@(Size n)) = Slist
-    { sList = zipWith (\li i -> Slist li $ Size i) (L.tails l) [n, n - 1 .. 0]
+    { sList = L.zipWith (\li i -> Slist li $ Size i) (L.tails l) [n, n - 1 .. 0]
     , sSize = s + 1
     }
 {-# INLINE tails #-}
@@ -659,3 +667,50 @@ findIndices p Slist{..} = let (newS, newL) = go 0 0 sList in
         then second (cur:) $ go (n + 1) (cur + 1) xs
         else go n (cur + 1) xs
 {-# INLINE findIndices #-}
+
+
+----------------------------------------------------------------------------
+-- Zipping
+----------------------------------------------------------------------------
+
+zip :: Slist a -> Slist b -> Slist (a, b)
+zip (Slist l1 s1) (Slist l2 s2) = Slist
+    { sList = L.zip l1 l2
+    , sSize = min s1 s2
+    }
+{-# INLINE zip #-}
+
+zip3 :: Slist a -> Slist b -> Slist c -> Slist (a, b, c)
+zip3 (Slist l1 s1) (Slist l2 s2) (Slist l3 s3) = Slist
+    { sList = L.zip3 l1 l2 l3
+    , sSize = minimum [s1, s2, s3]
+    }
+{-# INLINE zip3 #-}
+
+zipWith :: (a -> b -> c) -> Slist a -> Slist b -> Slist c
+zipWith f (Slist l1 s1) (Slist l2 s2) = Slist
+    { sList = L.zipWith f l1 l2
+    , sSize = min s1 s2
+    }
+{-# INLINE zipWith #-}
+
+zipWith3 :: (a -> b -> c -> d) -> Slist a -> Slist b -> Slist c -> Slist d
+zipWith3 f (Slist l1 s1) (Slist l2 s2) (Slist l3 s3) = Slist
+    { sList = L.zipWith3 f l1 l2 l3
+    , sSize = minimum [s1, s2, s3]
+    }
+{-# INLINE zipWith3 #-}
+
+unzip :: Slist (a, b) -> (Slist a, Slist b)
+unzip Slist{..} = let (as, bs) = L.unzip sList in (l as, l bs)
+  where
+    l :: [x] -> Slist x
+    l x = Slist x sSize
+{-# INLINE unzip #-}
+
+unzip3 :: Slist (a, b, c) -> (Slist a, Slist b, Slist c)
+unzip3 Slist{..} = let (as, bs, cs) = L.unzip3 sList in (l as, l bs, l cs)
+  where
+    l :: [x] -> Slist x
+    l x = Slist x sSize
+{-# INLINE unzip3 #-}
