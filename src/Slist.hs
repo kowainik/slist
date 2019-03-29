@@ -95,6 +95,18 @@ module Slist
        , zipWith3
        , unzip
        , unzip3
+
+         -- * Sets: special slists
+       , nub
+       , nubBy
+       , delete
+       , deleteBy
+       , deleteFirstsBy
+       , diff
+       , union
+       , unionBy
+       , intersect
+       , intersectBy
        ) where
 
 import Control.Applicative (Alternative (empty, (<|>)), liftA2)
@@ -456,7 +468,7 @@ drop i sl@Slist{..}
     | Size i >= sSize = mempty
     | otherwise = Slist
         { sList = P.drop i sList
-        , sSize = max (Size 0) $ sSize - (Size i)
+        , sSize = max (Size 0) $ sSize - Size i
         }
 {-# INLINE drop #-}
 
@@ -714,3 +726,75 @@ unzip3 Slist{..} = let (as, bs, cs) = L.unzip3 sList in (l as, l bs, l cs)
     l :: [x] -> Slist x
     l x = Slist x sSize
 {-# INLINE unzip3 #-}
+
+----------------------------------------------------------------------------
+-- Sets
+----------------------------------------------------------------------------
+
+nub :: Eq a => Slist a -> Slist a
+nub = nubBy (==)
+{-# INLINE nub #-}
+
+nubBy :: forall a . (a -> a -> Bool) -> Slist a -> Slist a
+nubBy f Slist{..} = let (s, l) = go 0 [] sList in case sSize of
+    Infinity -> infiniteSlist l
+    _        -> Slist l $ Size s
+  where
+    go :: Int -> [a] -> [a] -> (Int, [a])
+    go !n res [] = (n, res)
+    go n res (x:xs) =
+        if any (f x) res
+        then go n res xs
+        else go (n + 1) (res ++ [x]) xs
+{-# INLINE nubBy #-}
+
+delete :: Eq a => a -> Slist a -> Slist a
+delete = deleteBy (==)
+{-# INLINE delete #-}
+
+deleteBy :: forall a . (a -> a -> Bool) -> a -> Slist a -> Slist a
+deleteBy f a (Slist l Infinity) = infiniteSlist $ L.deleteBy f a l
+deleteBy f a Slist{..} = let (del, res) = go sList in
+    Slist res $ sSize - del
+  where
+    go :: [a] -> (Size, [a])
+    go [] = (Size 0, [])
+    go (x:xs) = if f a x
+        then (Size 1, xs)
+        else second (x:) $ go xs
+{-# INLINE deleteBy #-}
+
+deleteFirstsBy :: (a -> a -> Bool) -> Slist a -> Slist a -> Slist a
+deleteFirstsBy f = foldr (deleteBy f)
+{-# INLINE deleteFirstsBy #-}
+
+diff :: Eq a => Slist a -> Slist a -> Slist a
+diff = foldr delete
+{-# INLINE diff #-}
+
+union :: Eq a => Slist a -> Slist a -> Slist a
+union = unionBy (==)
+{-# INLINE union #-}
+
+unionBy :: (a -> a -> Bool) -> Slist a -> Slist a -> Slist a
+unionBy f xs ys = xs <> deleteFirstsBy f (nubBy f ys) xs
+{-# INLINE unionBy #-}
+
+intersect :: Eq a => Slist a -> Slist a -> Slist a
+intersect = intersectBy (==)
+{-# INLINE intersect #-}
+
+intersectBy :: forall a . (a -> a -> Bool) -> Slist a -> Slist a -> Slist a
+intersectBy _ (Slist _ (Size 0)) _ = mempty
+intersectBy _ _ (Slist _ (Size 0)) = mempty
+intersectBy f (Slist l1 Infinity) (Slist l2 _) = infiniteSlist $ L.intersectBy f l1 l2
+intersectBy f (Slist l1 _) (Slist l2 _) =
+    let (s, l) = go 0 l1 in Slist l $ Size s
+  where
+    go :: Int -> [a] -> (Int, [a])
+    go n [] = (n, [])
+    go n (x:xs) =
+        if any (f x) l2
+        then second (x:) $ go (n + 1) xs
+        else go n xs
+{-# INLINE intersectBy #-}
