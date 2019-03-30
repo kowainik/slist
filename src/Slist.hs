@@ -45,8 +45,14 @@ module Slist
 
          -- * Building slists
          -- ** Scans
-         -- ** Accumulating maps
+       , scanl
+       , scanl'
+       , scanl1
+       , scanr
+       , scanr1
+
          -- ** Unfolding
+       , unfoldr
 
          -- * Subslists
          -- ** Extracting
@@ -107,6 +113,13 @@ module Slist
        , unionBy
        , intersect
        , intersectBy
+
+         -- * Ordered slists
+       , sort
+       , sortBy
+       , sortOn
+       , insert
+       , insertBy
        ) where
 
 import Control.Applicative (Alternative (empty, (<|>)), liftA2)
@@ -115,8 +128,9 @@ import Data.Bifunctor (bimap, first, second)
 import Data.Semigroup (Semigroup (..))
 #endif
 import Prelude hiding (break, concat, concatMap, cycle, drop, dropWhile, filter, head, init,
-                iterate, last, lookup, map, repeat, replicate, reverse, span, splitAt, tail, take,
-                takeWhile, unzip, unzip3, zip, zip3, zipWith, zipWith3)
+                iterate, last, lookup, map, repeat, replicate, reverse, scanl, scanl1, scanr,
+                scanr1, span, splitAt, tail, take, takeWhile, unzip, unzip3, zip, zip3, zipWith,
+                zipWith3)
 
 import Slist.Size (Size (..), sizeMin, sizes)
 
@@ -259,6 +273,10 @@ instance L.IsList (Slist a) where
     toList :: Slist a -> [a]
     toList = sList
     {-# INLINE toList #-}
+
+    fromListN :: Int -> [a] -> Slist a
+    fromListN n l = Slist l $ Size n
+    {-# INLINE fromListN #-}
 
 slist :: [a] -> Slist a
 slist l = Slist l (Size $ length l)
@@ -411,7 +429,7 @@ subsequences Slist{..} = Slist
   where
     newSize :: Size -> Size
     newSize Infinity = Infinity
-    newSize (Size n) = Size $ 2 ^ (toInteger n)
+    newSize (Size n) = Size $ 2 ^ toInteger n
 {-# INLINE subsequences #-}
 
 permutations :: Slist a -> Slist (Slist a)
@@ -438,15 +456,42 @@ concat = foldr (<>) mempty
 {-# INLINE concat #-}
 
 concatMap :: Foldable t => (a -> Slist b) -> t a -> Slist b
-concatMap f = foldMap f
+concatMap = foldMap
 {-# INLINE concatMap #-}
 
 ----------------------------------------------------------------------------
 -- Building lists
 ----------------------------------------------------------------------------
 
--- TODO: Scans
--- TODO: accumulating slists
+scanl :: (b -> a -> b) -> b -> Slist a -> Slist b
+scanl f b Slist{..} = Slist (L.scanl f b sList) (sSize + 1)
+{-# INLINE scanl #-}
+
+scanl' :: (b -> a -> b) -> b -> Slist a -> Slist b
+scanl' f b Slist{..} = Slist (L.scanl' f b sList) (sSize + 1)
+{-# INLINE scanl' #-}
+
+scanl1 :: (a -> a -> a) -> Slist a -> Slist a
+scanl1 f Slist{..} = Slist (L.scanl1 f sList) sSize
+{-# INLINE scanl1 #-}
+
+scanr :: (a -> b -> b) -> b -> Slist a -> Slist b
+scanr f b Slist{..} = Slist (L.scanr f b sList) (sSize + 1)
+{-# INLINE scanr #-}
+
+scanr1 :: (a -> a -> a) -> Slist a -> Slist a
+scanr1 f Slist{..} = Slist (L.scanr1 f sList) sSize
+{-# INLINE scanr1 #-}
+
+
+unfoldr :: forall a b . (b -> Maybe (a, b)) -> b -> Slist a
+unfoldr f def = let (s, l) = go def in Slist l $ Size s
+  where
+    go :: b -> (Int, [a])
+    go b = case f b of
+        Just (a, newB) -> bimap (+ 1) (a:) $ go newB
+        Nothing        -> (0, [])
+{-# INLINE unfoldr #-}
 
 ----------------------------------------------------------------------------
 -- Sublists
@@ -458,7 +503,7 @@ take i sl@Slist{..} =
     then sl
     else Slist
         { sList = P.take i sList
-        , sSize = sizeMin i sSize
+        , sSize = Size i
         }
 {-# INLINE take #-}
 
@@ -468,7 +513,7 @@ drop i sl@Slist{..}
     | Size i >= sSize = mempty
     | otherwise = Slist
         { sList = P.drop i sList
-        , sSize = max (Size 0) $ sSize - Size i
+        , sSize = sSize - Size i
         }
 {-# INLINE drop #-}
 
@@ -483,7 +528,8 @@ splitAt i sl@Slist{..}
 {-# INLINE splitAt #-}
 
 takeWhile :: forall a . (a -> Bool) -> Slist a -> Slist a
-takeWhile p Slist{..} = let (s, l) = go 0 sList in Slist l $ Size s
+takeWhile p Slist{..} = let (s, l) = go 0 sList in
+    Slist l $ Size s
   where
     go :: Int -> [a] -> (Int, [a])
     go !n [] = (n, [])
@@ -494,7 +540,8 @@ takeWhile p Slist{..} = let (s, l) = go 0 sList in Slist l $ Size s
 {-# INLINE takeWhile #-}
 
 dropWhile :: forall a . (a -> Bool) -> Slist a -> Slist a
-dropWhile p Slist{..} = let (s, l) = go 0 sList in Slist l $ max (Size 0) (sSize - Size s)
+dropWhile p Slist{..} = let (s, l) = go 0 sList in
+    Slist l (sSize - Size s)
   where
     go :: Int -> [a] -> (Int, [a])
     go !n [] = (n, [])
@@ -507,7 +554,7 @@ dropWhile p Slist{..} = let (s, l) = go 0 sList in Slist l $ max (Size 0) (sSize
 span :: forall a . (a -> Bool) -> Slist a -> (Slist a, Slist a)
 span p Slist{..} = let (s, l, r) = go 0 sList in
     ( Slist l $ Size s
-    , Slist r $ max (Size 0) (sSize - Size s)
+    , Slist r (sSize - Size s)
     )
   where
     go :: Int -> [a] -> (Int, [a], [a])
@@ -531,7 +578,7 @@ stripPrefix (Slist l1 s1) f@(Slist l2 s2)
 
 safeStripPrefix :: Eq a => Slist a -> Slist a -> Maybe (Slist a)
 safeStripPrefix (Slist _ Infinity) (Slist _ Infinity) = Nothing
-safeStripPrefix sl1 sl2                               = stripPrefix sl1 sl2
+safeStripPrefix sl1 sl2 = stripPrefix sl1 sl2
 {-# INLINE safeStripPrefix #-}
 
 group :: Eq a => Slist a -> Slist (Slist a)
@@ -680,7 +727,6 @@ findIndices p Slist{..} = let (newS, newL) = go 0 0 sList in
         else go n (cur + 1) xs
 {-# INLINE findIndices #-}
 
-
 ----------------------------------------------------------------------------
 -- Zipping
 ----------------------------------------------------------------------------
@@ -798,3 +844,27 @@ intersectBy f (Slist l1 _) (Slist l2 _) =
         then second (x:) $ go (n + 1) xs
         else go n xs
 {-# INLINE intersectBy #-}
+
+----------------------------------------------------------------------------
+-- Ordered slists
+----------------------------------------------------------------------------
+
+sort :: Ord a => Slist a -> Slist a
+sort = sortBy compare
+{-# INLINE sort #-}
+
+sortBy :: (a -> a -> Ordering) -> Slist a -> Slist a
+sortBy f Slist{..} = Slist (L.sortBy f sList) sSize
+{-# INLINE sortBy #-}
+
+sortOn :: Ord b => (a -> b) -> Slist a -> Slist a
+sortOn f Slist{..} = Slist (L.sortOn f sList) sSize
+{-# INLINE sortOn #-}
+
+insert :: Ord a => a -> Slist a -> Slist a
+insert = insertBy compare
+{-# INLINE insert #-}
+
+insertBy :: (a -> a -> Ordering) -> a -> Slist a -> Slist a
+insertBy f a Slist{..} = Slist (L.insertBy f a sList) (sSize + 1)
+{-# INLINE insertBy #-}
