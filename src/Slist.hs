@@ -2,10 +2,18 @@
 {-# LANGUAGE CPP          #-}
 {-# LANGUAGE TypeFamilies #-}
 
+{- |
+Copyright:  (c) 2019 vrom911
+License:    MPL-2.0
+Maintainer: Veronika Romashkina <vrom911@gmail.com>
+
+This module introduces sized list data type — 'Slist'.
+-}
+
 module Slist
        ( -- * Types
-         Size
-       , Slist
+         Slist
+       , Size
          -- ** Smart constructors
        , slist
        , infiniteSlist
@@ -20,7 +28,7 @@ module Slist
          -- * Basic functions
        , len
        , size
-       , isNull
+       , isEmpty
        , head
        , safeHead
        , last
@@ -102,7 +110,8 @@ module Slist
        , unzip
        , unzip3
 
-         -- * Sets: special slists
+         -- * Sets
+         -- $sets
        , nub
        , nubBy
        , delete
@@ -132,27 +141,38 @@ import Prelude hiding (break, concat, concatMap, cycle, drop, dropWhile, filter,
                 scanr1, span, splitAt, tail, take, takeWhile, unzip, unzip3, zip, zip3, zipWith,
                 zipWith3)
 
-import Slist.Size (Size (..), sizeMin, sizes)
+import Slist.Size (Size (..), sizes)
 
 import qualified Data.Foldable as F (Foldable (..))
 import qualified Data.List as L
 import qualified GHC.Exts as L (IsList (..))
 import qualified Prelude as P
 
-
+{- | Data type that represents sized list.
+Size can be both finite or infinite, it is established using
+'Size' data type.
+-}
 data Slist a = Slist
     { sList :: [a]
     , sSize :: Size
     } deriving (Show, Read)
 
+{- | Equality of sized lists is checked more efficiently
+due to the fact that the check on the list sizes can be
+done first for the constant time.
+-}
 instance (Eq a) => Eq (Slist a) where
     (Slist l1 s1) == (Slist l2 s2) = s1 == s2 && l1 == l2
     {-# INLINE (==) #-}
 
+-- | Lexicographical comparison of the lists.
 instance (Ord a) => Ord (Slist a) where
     compare (Slist l1 _) (Slist l2 _) = compare l1 l2
     {-# INLINE compare #-}
 
+{- | List appending. Use '<>' for 'Slist' concatenation instead of
+'L.++' operator that is common in ordinary list concatenations.
+-}
 instance Semigroup (Slist a) where
     (<>) :: Slist a -> Slist a -> Slist a
     (Slist l1 s1) <> (Slist l2 s2) = Slist (l1 <> l2) (s1 + s2)
@@ -217,6 +237,9 @@ instance Monad Slist where
     sl >>= f = mconcat $ P.map f $ sList sl
     {-# INLINE (>>=) #-}
 
+{- | Efficient implementation of 'sum' and 'product' functions.
+'length' returns 'Int's 'maxBound' on infinite lists.
+-}
 instance Foldable Slist where
     foldMap :: (Monoid m) => (a -> m) -> Slist a -> m
     foldMap f = foldMap f . sList
@@ -248,7 +271,7 @@ instance Foldable Slist where
     {-# INLINE product #-}
 
     null :: Slist a -> Bool
-    null = isNull
+    null = isEmpty
     {-# INLINE null #-}
 
     length :: Slist a -> Int
@@ -278,46 +301,140 @@ instance L.IsList (Slist a) where
     fromListN n l = Slist l $ Size n
     {-# INLINE fromListN #-}
 
+{- | @O(n)@. Constructs 'Slist' from the given list.
+
+>>> slist [1..5]
+Slist {sList = [1,2,3,4,5], sSize = Size 5}
+
+/Note:/ works with finite lists. Use 'infiniteSlist'
+to construct infinite lists.
+-}
 slist :: [a] -> Slist a
 slist l = Slist l (Size $ length l)
 {-# INLINE slist #-}
 
+{- | @O(1)@. Constructs 'Slist' from the given list.
+
+@
+>> infiniteSlist [1..]
+Slist {sList = [1..], sSize = Infinity}
+@
+
+/Note:/ works with infinite lists. Use 'slist'
+to construct finite lists.
+-}
 infiniteSlist :: [a] -> Slist a
 infiniteSlist l = Slist l Infinity
 {-# INLINE infiniteSlist #-}
 
+{- | @O(1)@. Creates 'Slist' with a single element.
+The size of such 'Slist' is always equals to @Size 1@.
+
+>>> one "and only"
+Slist {sList = ["and only"], sSize = Size 1}
+
+-}
 one :: a -> Slist a
 one a = Slist [a] 1
 {-# INLINE one #-}
 
+{- | Returns an infinite slist of repeated applications
+of the given function to the start element:
+
+> iterate f x == [x, f x, f (f x), ...]
+
+@
+>> __iterate (+1) 0__
+Slist {sList = [0..], sSize = 'Infinity'}
+@
+
+>>> take 5 $ iterate ('a':) "a"
+Slist {sList = ["a","aa","aaa","aaaa","aaaaa"], sSize = Size 5}
+
+/Note:/ 'L.iterate' is lazy, potentially leading to thunk build-up if
+the consumer doesn't force each iterate.
+See 'iterate'' for a strict variant of this function.
+-}
 iterate :: (a -> a) -> a -> Slist a
 iterate f = infiniteSlist . L.iterate f
 {-# INLINE iterate #-}
 
 #if ( __GLASGOW_HASKELL__ > 802 )
+{- | Returns an infinite slist of repeated applications
+of the given function to the start element:
+
+> iterate' f x == [x, f x, f (f x), ...]
+
+@
+>> __iterate' (+1) 0__
+Slist {sList = [0..], sSize = 'Infinity'}
+@
+
+>>> take 5 $ iterate' ('a':) "a"
+Slist {sList = ["a","aa","aaa","aaaa","aaaaa"], sSize = Size 5}
+
+'iterate'' is the strict version of 'iterate'.
+
+It ensures that the result of each application of force to weak head normal
+form before proceeding.
+-}
 iterate' :: (a -> a) -> a -> Slist a
 iterate' f = infiniteSlist . L.iterate' f
 {-# INLINE iterate' #-}
 #endif
 
+{- | @O(1)@. Creates an infinite slist with the given element
+at each position.
+
+@
+>> __repeat 42__
+Slist {sList = [42, 42 ..], sSize = 'Infinity'}
+@
+
+>>> take 6 $ repeat 'm'
+Slist {sList = "mmmmmm", sSize = Size 6}
+
+-}
 repeat :: a -> Slist a
 repeat = infiniteSlist . L.repeat
 {-# INLINE repeat #-}
 
+{- | @O(n)@. Creates a finite slist with the given value at each position.
+
+>>> replicate 3 'o'
+Slist {sList = "ooo", sSize = Size 3}
+>>> replicate (-11) "hmm"
+Slist {sList = [], sSize = Size 0}
+-}
 replicate :: Int -> a -> Slist a
-replicate n x = Slist (L.replicate n x) $ Size n
+replicate n x
+  | n <= 0 = mempty
+  | otherwise = Slist (L.replicate n x) $ Size n
 {-# INLINE replicate #-}
 
+{- | Ties a finite list into a circular one, or equivalently,
+the infinite repetition of the original list.
+It is the identity on infinite lists.
+
+>>> take 23 $ cycle (slist "pam ")
+Slist {sList = "pam pam pam pam pam pam", sSize = Size 23}
+
+@
+>> __cycle $ 'infiniteSlist' [1..]__
+Slist {sList = [1..], sSize = 'Infinity'}
+@
+-}
 cycle :: Slist a -> Slist a
-cycle Slist{..} = infiniteSlist $ L.cycle sList
+cycle sl@(Slist _ Infinity) = sl
+cycle Slist{..}             = infiniteSlist $ L.cycle sList
 {-# INLINE cycle #-}
 
 ----------------------------------------------------------------------------
 -- Basic functions
 ----------------------------------------------------------------------------
 
-{- | Returns the length of a structure as an 'Int'.
-Runs in @O(1)@ time. On infinite lists returns the 'Int's 'maxBound'.
+{- | @O(1)@. Returns the length of a structure as an 'Int'.
+On infinite lists returns the 'Int's 'maxBound'.
 
 >>> len $ one 42
 1
@@ -332,28 +449,90 @@ len Slist{..} = case sSize of
     Size n   -> n
 {-# INLINE len #-}
 
+{- | @O(1)@. Returns the 'Size' of the slist.
+
+>>> size $ slist "Hello World!"
+Size 12
+>>> size $ infiniteSlist [1..]
+Infinity
+-}
 size :: Slist a -> Size
 size = sSize
 {-# INLINE size #-}
 
-isNull :: Slist a -> Bool
-isNull = (== 0) . size
-{-# INLINE isNull #-}
+{- | @O(1)@. Checks if 'Slist' is empty
 
+>>> isEmpty mempty
+True
+>>> isEmpty $ slist []
+True
+>>> isEmpty $ slist "Not Empty"
+False
+-}
+isEmpty :: Slist a -> Bool
+isEmpty = (== 0) . size
+{-# INLINE isEmpty #-}
+
+{- | @O(1)@. Extracts the first element of a slist.
+Uses not total 'L.head' function, so use wisely.
+
+It is recommended to use 'safeHead' instead.
+
+>>> head $ slist "qwerty"
+'q'
+>>> head $ infiniteSlist [1..]
+1
+>>> head mempty
+*** Exception: Prelude.head: empty list
+
+-}
 head :: Slist a -> a
 head = P.head . sList
 {-# INLINE head #-}
 
+{- | @O(1)@. Extracts the first element of a slist if possible.
+
+>>> safeHead $ slist "qwerty"
+Just 'q'
+>>> safeHead $ infiniteSlist [1..]
+Just 1
+>>> safeHead mempty
+Nothing
+-}
 safeHead :: Slist a -> Maybe a
 safeHead Slist{..} = case sSize of
     Size 0 -> Nothing
     _      -> Just $ P.head sList
 {-# INLINE safeHead #-}
 
+{- | @O(n)@. Extracts the last element of a list.
+Uses not total 'L.last' function, so use wisely.
+
+It is recommended to use 'safeLast' instead
+
+>>> last $ slist "qwerty"
+'y'
+>>> last mempty
+*** Exception: Prelude.last: empty list
+
+@
+>> last $ infiniteSlist [1..]
+\</hangs/\>
+@
+-}
 last :: Slist a -> a
 last = P.last . sList
 {-# INLINE last #-}
 
+{- | @O(n)@. Extracts the last element of a list if possible.
+
+>>> safeLast $ slist "qwerty"
+Just 'y'
+>>> safeLast mempty
+Nothing
+>>> safeLast $ infiniteSlist [1..]
+Nothing
+-}
 safeLast :: Slist a -> Maybe a
 safeLast Slist{..} = case sSize of
     Infinity -> Nothing
@@ -361,12 +540,37 @@ safeLast Slist{..} = case sSize of
     _        -> Just $ P.last sList
 {-# INLINE safeLast #-}
 
+{- | @O(1)@. Returns a slist with all the elements after
+the head of a given slist.
+
+>>> tail mempty
+Slist {sList = [], sSize = Size 0}
+>>> tail $ slist "Hello"
+Slist {sList = "ello", sSize = Size 4}
+
+@
+>> __tail $ 'infiniteSlist' [0..]__
+Slist {sList = [1..], sSize = 'Infinity'}
+@
+-}
 tail :: Slist a -> Slist a
 tail Slist{..} = case sSize of
     Size 0 -> mempty
     _      -> Slist (P.drop 1 sList) (sSize - 1)
 {-# INLINE tail #-}
 
+{- | @O(n)@. Return all the elements of a list except the last one.
+
+>>> init mempty
+Slist {sList = [], sSize = Size 0}
+>>> init $ slist "Hello"
+Slist {sList = "Hell", sSize = Size 4}
+
+@
+>> __init $ 'infiniteSlist' [0..]__
+Slist {sList = [0..], sSize = 'Infinity'}
+@
+-}
 init :: Slist a -> Slist a
 init sl@Slist{..} = case sSize of
     Infinity -> sl
@@ -374,6 +578,19 @@ init sl@Slist{..} = case sSize of
     _        -> Slist (P.init sList) (sSize - 1)
 {-# INLINE init #-}
 
+{- | @O(1)@. Decomposes a slist into its head and tail.
+If the slist is empty, returns 'Nothing'.
+
+>>> uncons mempty
+Nothing
+>>> uncons $ one 'a'
+Just ('a',Slist {sList = "", sSize = Size 0})
+
+@
+>> __uncons $ 'infiniteSlist' [0..]__
+Just (0, Slist {sList = [1..], sSize = 'Infinity'})
+@
+-}
 uncons :: Slist a -> Maybe (a, Slist a)
 uncons (Slist [] _)     = Nothing
 uncons (Slist (x:xs) s) = Just (x, Slist xs $ s - 1)
@@ -383,36 +600,104 @@ uncons (Slist (x:xs) s) = Just (x, Slist xs $ s - 1)
 -- Transformations
 ----------------------------------------------------------------------------
 
+{- | @O(n)@. Applies the given function to each element of the slist.
+
+> map f (slist [x1, x2, ..., xn])     == slist [f x1, f x2, ..., f xn]
+> map f (infiniteSlist [x1, x2, ...]) == infiniteSlist [f x1, f x2, ...]
+
+-}
 map :: (a -> b) -> Slist a -> Slist b
 map f Slist{..} = Slist (P.map f sList) sSize
 {-# INLINE map #-}
 
+{- | @O(n)@. Returns the elements of the slist in reverse order.
+
+>>> reverse $ slist "Hello"
+Slist {sList = "olleH", sSize = Size 5}
+>>> reverse $ slist "wow"
+Slist {sList = "wow", sSize = Size 3}
+
+/Note:/ 'reverse' slist can not be calculated on infinite slists.
+
+@
+>> __reverse $ 'infiniteSlist' [1..]__
+\</hangs/\>
+@
+
+Use 'safeReverse' to not hang on infinite slists.
+-}
 reverse :: Slist a -> Slist a
 reverse Slist{..} = Slist (L.reverse sList) sSize
 {-# INLINE reverse #-}
 
+{- | @O(n)@. Returns the elements of the slist in reverse order.
+On infinite slists returns the initial slist.
+
+>>> safeReverse $ slist "Hello"
+Slist {sList = "olleH", sSize = Size 5}
+
+@
+>> __reverse $ 'infiniteSlist' [1..]__
+Slist {sList = [1..], sSize = 'Infinity'}
+@
+-}
 safeReverse :: Slist a -> Slist a
 safeReverse sl@(Slist _ Infinity) = sl
 safeReverse sl                    = reverse sl
 {-# INLINE safeReverse #-}
 
+{- | @O(n)@. Takes an element and a list and intersperses
+that element between the elements of the list.
+
+>>> intersperse ',' $ slist "abcd"
+Slist {sList = "a,b,c,d", sSize = Size 7}
+>>> intersperse '!' mempty
+Slist {sList = "", sSize = Size 0}
+
+@
+>> __intersperse 0 $ 'infiniteSlist' [1,1..]__
+Slist {sList = [1,0,1,0..], sSize = 'Infinity'}
+@
+-}
 intersperse :: a -> Slist a -> Slist a
 intersperse _ sl@(Slist _ (Size 0)) = sl
 intersperse a Slist{..}             = Slist (L.intersperse a sList) (2 * sSize - 1)
 {-# INLINE intersperse #-}
 
+{- | @O(n)@. Inserts the given slist in between the slists and concatenates the result.
+
+> intercalate x xs = concat (intersperse x xs)
+
+>>> intercalate (slist ", ") $ slist [slist "Lorem", slist "ipsum", slist "dolor"]
+Slist {sList = "Lorem, ipsum, dolor", sSize = Size 19}
+
+-}
 intercalate :: Slist a -> Slist (Slist a) -> Slist a
 intercalate x = foldr (<>) mempty . intersperse x
 {-# INLINE intercalate #-}
 
-{- | The transpose function transposes the rows and columns of its argument. For example,
+{- | @O(n * m)@. Transposes the rows and columns of the slist.
 
->>> transpose [[1,2,3],[4,5,6]]
-[[1,4],[2,5],[3,6]]
+>>> transpose $ slist [slist [1,2]]
+Slist {sList = [Slist {sList = [1], sSize = Size 1},Slist {sList = [2], sSize = Size 1}], sSize = Size 2}
+
+@
+>> __transpose $ slist [slist [1,2,3], slist [4,5,6]]__
+Slist { sList =
+          [ Slist {sList = [1,4], sSize = Size 2}
+          , Slist {sList = [2,5], sSize = Size 2}
+          , Slist {sList = [3,6], sSize = Size 2}
+          ]
+      , sSize = Size 3
+      }
+@
+
 If some of the rows are shorter than the following rows, their elements are skipped:
 
->>> transpose [[10,11],[20],[],[30,31,32]]
-[[10,20,30],[11,31],[32]]
+>>> transpose $ slist [slist [10,11], slist [20], mempty]
+Slist {sList = [Slist {sList = [10,20], sSize = Size 2},Slist {sList = [11], sSize = Size 1}], sSize = Size 2}
+
+If some of the rows is an infinite slist, then the resulting slist is going to be infinite.
 -}
 transpose :: Slist (Slist a) -> Slist (Slist a)
 transpose (Slist l _) = Slist
@@ -421,6 +706,16 @@ transpose (Slist l _) = Slist
     }
 {-# INLINE transpose #-}
 
+{- | @O(2 ^ n)@. Returns the list of all subsequences of the argument.
+
+>>> subsequences mempty
+Slist {sList = [Slist {sList = [], sSize = Size 0}], sSize = Size 1}
+>>> subsequences $ slist "ab"
+Slist {sList = [Slist {sList = "", sSize = Size 0},Slist {sList = "a", sSize = Size 1},Slist {sList = "b", sSize = Size 1},Slist {sList = "ab", sSize = Size 2}], sSize = Size 4}
+>>> take 4 $ subsequences $ infiniteSlist [1..]
+Slist {sList = [Slist {sList = [], sSize = Size 0},Slist {sList = [1], sSize = Size 1},Slist {sList = [2], sSize = Size 1},Slist {sList = [1,2], sSize = Size 2}], sSize = Size 4}
+
+-}
 subsequences :: Slist a -> Slist (Slist a)
 subsequences Slist{..} = Slist
     { sList = P.map slist $ L.subsequences sList
@@ -432,6 +727,14 @@ subsequences Slist{..} = Slist
     newSize (Size n) = Size $ 2 ^ toInteger n
 {-# INLINE subsequences #-}
 
+{- | @O(n!)@. Returns the list of all permutations of the argument.
+
+>>> permutations mempty
+Slist {sList = [Slist {sList = [], sSize = Size 0}], sSize = Size 1}
+>>> permutations $ slist "abc"
+Slist {sList = [Slist {sList = "abc", sSize = Size 3},Slist {sList = "bac", sSize = Size 3},Slist {sList = "cba", sSize = Size 3},Slist {sList = "bca", sSize = Size 3},Slist {sList = "cab", sSize = Size 3},Slist {sList = "acb", sSize = Size 3}], sSize = Size 6}
+
+-}
 permutations :: Slist a -> Slist (Slist a)
 permutations (Slist l s) = Slist
     { sList = P.map (\a -> Slist a s) $ L.permutations l
@@ -451,10 +754,26 @@ permutations (Slist l s) = Slist
 -- Reducing slists (folds)
 ----------------------------------------------------------------------------
 
+{- | \( O(\sum n_i) \) The concatenation of all the elements of a container of slists.
+
+>>> concat [slist [1,2], slist [3..5], slist [6..10]]
+Slist {sList = [1,2,3,4,5,6,7,8,9,10], sSize = Size 10}
+
+@
+>> __ concat $ slist [slist [1,2], 'infiniteSlist' [3..]]__
+Slist {sList = [1..], sSize = 'Infinity'}
+@
+-}
 concat :: Foldable t => t (Slist a) -> Slist a
 concat = foldr (<>) mempty
 {-# INLINE concat #-}
 
+{- | Maps a function over all the elements of a container
+and concatenates the resulting slists.
+
+>>> concatMap one "abc"
+Slist {sList = "abc", sSize = Size 3}
+-}
 concatMap :: Foldable t => (a -> Slist b) -> t a -> Slist b
 concatMap = foldMap
 {-# INLINE concatMap #-}
@@ -463,27 +782,79 @@ concatMap = foldMap
 -- Building lists
 ----------------------------------------------------------------------------
 
+{- | @O(n)@. Similar to 'foldl', but returns a slist of successive
+reduced values from the left:
+
+> scanl f z $ slist [x1, x2, ...] == slist [z, z `f` x1, (z `f` x1) `f` x2, ...]
+
+Note that
+
+> last (scanl f z xs) == foldl f z xs.
+
+This peculiar arrangement is necessary to prevent scanl being rewritten in
+its own right-hand side.
+
+>>> scanl (+) 0 $ slist [1..10]
+Slist {sList = [0,1,3,6,10,15,21,28,36,45,55], sSize = Size 11}
+
+-}
 scanl :: (b -> a -> b) -> b -> Slist a -> Slist b
 scanl f b Slist{..} = Slist (L.scanl f b sList) (sSize + 1)
 {-# INLINE scanl #-}
 
+-- | @O(n)@. A strictly accumulating version of 'scanl'
 scanl' :: (b -> a -> b) -> b -> Slist a -> Slist b
 scanl' f b Slist{..} = Slist (L.scanl' f b sList) (sSize + 1)
 {-# INLINE scanl' #-}
 
+{- | @O(n)@. 'scanl1' is a variant of 'scanl' that has no starting value argument:
+
+> scanl1 f $ slist [x1, x2, ...] == slist [x1, x1 `f` x2, ...]
+-}
 scanl1 :: (a -> a -> a) -> Slist a -> Slist a
 scanl1 f Slist{..} = Slist (L.scanl1 f sList) sSize
 {-# INLINE scanl1 #-}
 
+{- | @O(n)@. The right-to-left dual of 'scanl'.
+
+Note that
+
+> head (scanr f z xs) == foldr f z xs.
+
+>>> scanr (+) 0 $ slist [1..10]
+Slist {sList = [55,54,52,49,45,40,34,27,19,10,0], sSize = Size 11}
+
+-}
 scanr :: (a -> b -> b) -> b -> Slist a -> Slist b
 scanr f b Slist{..} = Slist (L.scanr f b sList) (sSize + 1)
 {-# INLINE scanr #-}
 
+-- | A variant of 'scanr' that has no starting value argument.
 scanr1 :: (a -> a -> a) -> Slist a -> Slist a
 scanr1 f Slist{..} = Slist (L.scanr1 f sList) sSize
 {-# INLINE scanr1 #-}
 
+{- | @O(n)@. A \`dual\' to 'foldr': while 'foldr'
+reduces a list to a summary value, 'unfoldr' builds a list from
+a seed value.  The function takes the element and returns 'Nothing'
+if it is done producing the list or returns 'Just' @(a,b)@, in which
+case, @a@ is a prepended to the list and @b@ is used as the next
+element in a recursive call.
 
+In some cases, 'unfoldr' can undo a 'foldr' operation:
+
+> unfoldr f' (foldr f z xs) == xs
+
+if the following holds:
+
+> f' (f x y) = Just (x,y)
+> f' z       = Nothing
+
+A simple use of unfoldr:
+
+>>> unfoldr (\b -> if b == 0 then Nothing else Just (b, b-1)) 10
+Slist {sList = [10,9,8,7,6,5,4,3,2,1], sSize = Size 10}
+-}
 unfoldr :: forall a b . (b -> Maybe (a, b)) -> b -> Slist a
 unfoldr f def = let (s, l) = go def in Slist l $ Size s
   where
@@ -497,16 +868,54 @@ unfoldr f def = let (s, l) = go def in Slist l $ Size s
 -- Sublists
 ----------------------------------------------------------------------------
 
+{- | @O(i) | i < n@ and @O(1) | otherwise@.
+
+Returns the prefix of the slist of the given length.
+If the given @i@ is non-positive then the empty structure is returned.
+If @i@ is exceeds the length of the structure the initial slist is returned.
+
+>>> take 5 $ slist "Hello world!"
+Slist {sList = "Hello", sSize = Size 5}
+>>> take 20 $ slist "small"
+Slist {sList = "small", sSize = Size 5}
+>>> take 0 $ slist "none"
+Slist {sList = "", sSize = Size 0}
+>>> take (-11) $ slist "hmm"
+Slist {sList = "", sSize = Size 0}
+>>> take 4 $ infiniteSlist [1..]
+Slist {sList = [1,2,3,4], sSize = Size 4}
+-}
 take :: Int -> Slist a -> Slist a
-take i sl@Slist{..} =
-    if Size i >= sSize
-    then sl
-    else Slist
+take i sl@Slist{..}
+    | Size i >= sSize = sl
+    | i <= 0 = mempty
+    | otherwise = Slist
         { sList = P.take i sList
         , sSize = Size i
         }
 {-# INLINE take #-}
 
+{- | @O(i) | i < n@ and @O(1) | otherwise@.
+
+Returns the suffix of the slist after the first @i@ elements.
+If @i@ exceeds the length of the slist then the empty structure is returned.
+If @i@ is non-positive the initial structure is returned.
+
+>>> drop 6 $ slist "Hello World"
+Slist {sList = "World", sSize = Size 5}
+>>> drop 42 $ slist "oops!"
+Slist {sList = "", sSize = Size 0}
+>>> drop 0 $ slist "Hello World!"
+Slist {sList = "Hello World!", sSize = Size 12}
+>>> drop (-4) $ one 42
+Slist {sList = [42], sSize = Size 1}
+
+@
+>> __drop 5 $ 'infiniteSlist' [1..]__
+Slist {sList = [6..], sSize = 'Infinity'}
+@
+
+-}
 drop :: Int -> Slist a -> Slist a
 drop i sl@Slist{..}
     | i <= 0 = sl
@@ -517,6 +926,26 @@ drop i sl@Slist{..}
         }
 {-# INLINE drop #-}
 
+{- | @O(i) | i < n@ and @O(1) | otherwise@.
+
+Returns a tuple where the first element is the prefix
+of the given length and the second element is the remainder
+of the slist.
+
+>>> splitAt 5 $ slist "Hello World!"
+(Slist {sList = "Hello", sSize = Size 5},Slist {sList = " World!", sSize = Size 7})
+>>> splitAt 0 $ slist "abc"
+(Slist {sList = "", sSize = Size 0},Slist {sList = "abc", sSize = Size 3})
+>>> splitAt 4 $ slist "abc"
+(Slist {sList = "abc", sSize = Size 3},Slist {sList = "", sSize = Size 0})
+>>>splitAt (-42) $ slist "??"
+(Slist {sList = "", sSize = Size 0},Slist {sList = "??", sSize = Size 2})
+
+@
+>> __splitAt 2 $ 'infiniteSlist' [1..]__
+(Slist {sList = [1,2], sSize = 'Size' 2}, Slist {sList = [3..], sSize = 'Infinity'})
+@
+-}
 splitAt :: Int -> Slist a -> (Slist a, Slist a)
 splitAt i sl@Slist{..}
     | i <= 0 = (mempty, sl)
@@ -527,6 +956,19 @@ splitAt i sl@Slist{..}
         in (Slist l1 $ Size i, Slist l2 s2)
 {-# INLINE splitAt #-}
 
+{- | @O(n)@. Returns the longest prefix (possibly empty)
+of elements that satisfy the given predicate.
+
+>>> takeWhile (<3) $ slist [1..10]
+Slist {sList = [1,2], sSize = Size 2}
+>>> takeWhile (<3) $ infiniteSlist [1..]
+Slist {sList = [1,2], sSize = Size 2}
+>>> takeWhile (<=10) $ slist [1..10]
+Slist {sList = [1,2,3,4,5,6,7,8,9,10], sSize = Size 10}
+>>> takeWhile (<0) $ slist [1..10]
+Slist {sList = [], sSize = Size 0}
+
+-}
 takeWhile :: forall a . (a -> Bool) -> Slist a -> Slist a
 takeWhile p Slist{..} = let (s, l) = go 0 sList in
     Slist l $ Size s
@@ -539,6 +981,18 @@ takeWhile p Slist{..} = let (s, l) = go 0 sList in
         else (n, [])
 {-# INLINE takeWhile #-}
 
+{- | @O(n)@. Returns the suffix (possibly empty) of the remaining
+elements after dropping elements that satisfy the given predicate.
+
+>>> dropWhile (<3) $ slist [1..10]
+Slist {sList = [3,4,5,6,7,8,9,10], sSize = Size 8}
+>>> dropWhile (<=10) $ slist [1..10]
+Slist {sList = [], sSize = Size 0}
+>>> dropWhile (<0) $ slist [1..10]
+Slist {sList = [1,2,3,4,5,6,7,8,9,10], sSize = Size 10}
+>>> take 5 $ dropWhile (<3) $ infiniteSlist [1..]
+Slist {sList = [3,4,5,6,7], sSize = Size 5}
+-}
 dropWhile :: forall a . (a -> Bool) -> Slist a -> Slist a
 dropWhile p Slist{..} = let (s, l) = go 0 sList in
     Slist l (sSize - Size s)
@@ -551,6 +1005,22 @@ dropWhile p Slist{..} = let (s, l) = go 0 sList in
         else (n, x:xs)
 {-# INLINE dropWhile #-}
 
+{- | @O(n)@. Returns a tuple where first element is longest prefix (possibly empty)
+of the slist of elements that satisfy the given predicate
+and second element is the remainder of the list.
+
+>>> span (<3) $ slist [1,2,3,4,1,2,3,4]
+(Slist {sList = [1,2], sSize = Size 2},Slist {sList = [3,4,1,2,3,4], sSize = Size 6})
+>>> span (<=10) $ slist [1..3]
+(Slist {sList = [1,2,3], sSize = Size 3},Slist {sList = [], sSize = Size 0})
+>>> span (<0) $ slist [1..3]
+(Slist {sList = [], sSize = Size 0},Slist {sList = [1,2,3], sSize = Size 3})
+
+@
+>> __span (<3) $ 'infiniteSlist' [1..]__
+(Slist {sList = [1,2], sSize = Size 2}, Slist {sList = [3..], sSize = 'Infinity'})
+@
+-}
 span :: forall a . (a -> Bool) -> Slist a -> (Slist a, Slist a)
 span p Slist{..} = let (s, l, r) = go 0 sList in
     ( Slist l $ Size s
@@ -565,10 +1035,42 @@ span p Slist{..} = let (s, l, r) = go 0 sList in
         else (n, [], x:xs)
 {-# INLINE span #-}
 
+{- | @O(n)@.  Returns a tuple where first element is longest prefix (possibly empty)
+of the slist of elements that /do not/ satisfy the given predicate
+and second element is the remainder of the list.
+
+@
+> break p = 'span' ('not' . p)
+@
+-}
 break :: (a -> Bool) -> Slist a -> (Slist a, Slist a)
 break p = span (not . p)
 {-# INLINE break #-}
 
+{- | @O(m)@. Drops the given prefix from a list.
+It returns 'Nothing' if the slist did not start with the given prefix,
+or 'Just' the slist after the prefix, if it does.
+
+>>> stripPrefix (slist "foo") (slist "foobar")
+Just (Slist {sList = "bar", sSize = Size 3})
+>>> stripPrefix (slist "foo") (slist "foo")
+Just (Slist {sList = "", sSize = Size 0})
+>>> stripPrefix (slist "foo") (slist "barfoo")
+Nothing
+>>> stripPrefix mempty  (slist "foo")
+Just (Slist {sList = "foo", sSize = Size 3})
+>>> stripPrefix (infiniteSlist [0..]) (infiniteSlist [1..])
+Nothing
+
+/Note:/ this function could hang on the infinite slists.
+
+@
+>> __stripPrefix (infiniteSlist [1..]) (infiniteSlist [1..])__
+\</hangs/\>
+@
+
+Use 'safeStripPrefix' instead.
+-}
 stripPrefix :: Eq a => Slist a -> Slist a -> Maybe (Slist a)
 stripPrefix (Slist l1 s1) f@(Slist l2 s2)
     | s1 == Size 0 = Just f
@@ -576,20 +1078,56 @@ stripPrefix (Slist l1 s1) f@(Slist l2 s2)
     | otherwise = (\l -> Slist l $ s2 - s1) <$> L.stripPrefix l1 l2
 {-# INLINE stripPrefix #-}
 
+{- | Similar to 'stripPrefix', but never hangs on infinite lists
+and returns 'Nothing' in that case.
+
+>>> safeStripPrefix (infiniteSlist [1..]) (infiniteSlist [1..])
+Nothing
+>>> safeStripPrefix (infiniteSlist [0..]) (infiniteSlist [1..])
+Nothing
+
+-}
 safeStripPrefix :: Eq a => Slist a -> Slist a -> Maybe (Slist a)
 safeStripPrefix (Slist _ Infinity) (Slist _ Infinity) = Nothing
-safeStripPrefix sl1 sl2 = stripPrefix sl1 sl2
+safeStripPrefix sl1 sl2                               = stripPrefix sl1 sl2
 {-# INLINE safeStripPrefix #-}
 
+{- | @O(n)@. Takes a slist and returns a slist of slists such
+that the concatenation of the result is equal to the argument.
+Moreover, each sublist in the result contains only equal elements.
+
+It is a special case of 'groupBy', which allows
+to supply their own equality test.
+
+>>> group $ slist "Mississippi"
+Slist {sList = [Slist {sList = "M", sSize = Size 1},Slist {sList = "i", sSize = Size 1},Slist {sList = "ss", sSize = Size 2},Slist {sList = "i", sSize = Size 1},Slist {sList = "ss", sSize = Size 2},Slist {sList = "i", sSize = Size 1},Slist {sList = "pp", sSize = Size 2},Slist {sList = "i", sSize = Size 1}], sSize = Size 8}
+>>> group mempty
+Slist {sList = [], sSize = Size 0}
+
+-}
 group :: Eq a => Slist a -> Slist (Slist a)
 group = groupBy (==)
 {-# INLINE group #-}
 
+{- | @O(n)@. Non-overloaded version of the 'group' function.
+
+>>> groupBy (>) $ slist "Mississippi"
+Slist {sList = [Slist {sList = "M", sSize = Size 1},Slist {sList = "i", sSize = Size 1},Slist {sList = "s", sSize = Size 1},Slist {sList = "si", sSize = Size 2},Slist {sList = "s", sSize = Size 1},Slist {sList = "sippi", sSize = Size 5}], sSize = Size 6}
+
+-}
 groupBy :: (a -> a -> Bool) -> Slist a -> Slist (Slist a)
 groupBy p (Slist l Infinity) = infiniteSlist $ P.map slist $ L.groupBy p l
 groupBy p Slist{..}          = slist $ P.map slist $ L.groupBy p sList
 {-# INLINE groupBy #-}
 
+{- | @O(n)@. Returns all initial segments of the argument, shortest first.
+
+>>> inits $ slist "abc"
+Slist {sList = [Slist {sList = "", sSize = Size 0},Slist {sList = "a", sSize = Size 1},Slist {sList = "ab", sSize = Size 2},Slist {sList = "abc", sSize = Size 3}], sSize = Size 4}
+>>> inits mempty
+Slist {sList = [Slist {sList = [], sSize = Size 0}], sSize = Size 1}
+
+-}
 inits :: Slist a -> Slist (Slist a)
 inits (Slist l s) = Slist
     { sList = L.zipWith Slist (L.inits l) $ sizes s
@@ -597,6 +1135,14 @@ inits (Slist l s) = Slist
     }
 {-# INLINE inits #-}
 
+{- | @O(n)@. Returns all final segments of the argument, shortest first.
+
+>>> tails $ slist "abc"
+Slist {sList = [Slist {sList = "abc", sSize = Size 3},Slist {sList = "bc", sSize = Size 2},Slist {sList = "c", sSize = Size 1},Slist {sList = "", sSize = Size 0}], sSize = Size 4}
+>>> tails mempty
+Slist {sList = [Slist {sList = [], sSize = Size 0}], sSize = Size 1}
+
+-}
 tails :: Slist a -> Slist (Slist a)
 tails (Slist l Infinity) = infiniteSlist $ P.map infiniteSlist (L.tails l)
 tails (Slist l s@(Size n)) = Slist
@@ -605,49 +1151,164 @@ tails (Slist l s@(Size n)) = Slist
     }
 {-# INLINE tails #-}
 
+{- | @O(m)@.
+Takes two slists and returns 'True' iff the first slist
+is a prefix of the second.
 
+>>> isPrefixOf (slist "Hello") (slist "Hello World!")
+True
+>>> isPrefixOf (slist "Hello World!") (slist "Hello")
+False
+>>> isPrefixOf mempty (slist "hey")
+True
+
+/Note:/ this function could hang on the infinite slists.
+
+@
+>> __isPrefixOf (infiniteSlist [1..]) (infiniteSlist [1..])__
+\</hangs/\>
+@
+
+Use 'safeIsPrefixOf' instead.
+
+-}
 isPrefixOf :: Eq a => Slist a -> Slist a -> Bool
 isPrefixOf (Slist l1 s1) (Slist l2 s2)
     | s1 > s2 = False
     | otherwise = L.isPrefixOf l1 l2
 {-# INLINE isPrefixOf #-}
 
+{- | Similar to 'isPrefixOf', but never hangs on infinite lists
+and returns 'False' in that case.
+
+>>> safeIsPrefixOf (infiniteSlist [1..]) (infiniteSlist [1..])
+False
+>>> safeIsPrefixOf (infiniteSlist [0..]) (infiniteSlist [1..])
+False
+-}
 safeIsPrefixOf :: Eq a => Slist a -> Slist a -> Bool
 safeIsPrefixOf sl1@(Slist _ s1) sl2@(Slist _ s2)
     | s1 == Infinity && s2 == Infinity = False
     | otherwise = isPrefixOf sl1 sl2
 {-# INLINE safeIsPrefixOf #-}
 
+{- |
+Takes two slists and returns 'True' iff the first slist
+is a suffix of the second.
+
+>>> isSuffixOf (slist "World!") (slist "Hello World!")
+True
+>>> isSuffixOf (slist "Hello World!") (slist "Hello")
+False
+>>> isSuffixOf mempty (slist "hey")
+True
+
+/Note:/ this function hangs if the second slist is infinite.
+
+@
+>> __isSuffixOf /anything/ (infiniteSlist [1..])__
+\</hangs/\>
+@
+
+Use 'safeIsSuffixOf' instead.
+-}
 isSuffixOf :: Eq a => Slist a -> Slist a -> Bool
 isSuffixOf (Slist l1 s1) (Slist l2 s2)
     | s1 > s2 = False
     | otherwise = L.isSuffixOf l1 l2
 {-# INLINE isSuffixOf #-}
 
+{- | Similar to 'isSuffixOf', but never hangs on infinite lists
+and returns 'False' in that case.
+
+>>> safeIsSuffixOf (slist [1,2]) (infiniteSlist [1..])
+False
+>>> safeIsSuffixOf (infiniteSlist [1..]) (infiniteSlist [1..])
+False
+-}
 safeIsSuffixOf :: Eq a => Slist a -> Slist a -> Bool
 safeIsSuffixOf sl1 sl2@(Slist _ s2)
     | s2 == Infinity = False
     | otherwise = isSuffixOf sl1 sl2
 {-# INLINE safeIsSuffixOf #-}
 
+{- |
+Takes two slists and returns 'True' iff the first slist
+is contained, wholly and intact, anywhere within the second.
+
+>>> isInfixOf (slist "ll") (slist "Hello World!")
+True
+>>> isInfixOf (slist " Hello") (slist "Hello")
+False
+>>> isInfixOf (slist "Hello World!") (slist "Hello")
+False
+
+/Note:/ this function could hang on the infinite slists.
+
+@
+>> __isPrefixOf (infiniteSlist [1..]) (infiniteSlist [1..])__
+\</hangs/\>
+@
+
+Use 'safeIsInfixOf' instead.
+-}
 isInfixOf :: Eq a => Slist a -> Slist a -> Bool
 isInfixOf (Slist l1 s1) (Slist l2 s2)
     | s1 > s2 = False
     | otherwise = L.isInfixOf l1 l2
 {-# INLINE isInfixOf #-}
 
+{- | Similar to 'isInfixOf', but never hangs on infinite lists
+and returns 'False' in that case.
+
+>>> safeIsInfixOf (infiniteSlist [1..]) (infiniteSlist [1..])
+False
+>>> safeIsInfixOf (infiniteSlist [0..]) (infiniteSlist [1..])
+False
+-}
 safeIsInfixOf :: Eq a => Slist a -> Slist a -> Bool
 safeIsInfixOf sl1@(Slist _ s1) sl2@(Slist _ s2)
     | s1 == Infinity && s2 == Infinity = False
     | otherwise = isInfixOf sl1 sl2
 {-# INLINE safeIsInfixOf #-}
 
+{- |
+Takes two slists and returns 'True' if all the elements
+of the first slist occur, in order, in the second.
+The elements do not have to occur consecutively.
+
+@isSubsequenceOf x y@ is equivalent to @'elem' x ('subsequences' y)@.
+
+>>> isSubsequenceOf (slist "Hll") (slist "Hello World!")
+True
+>>> isSubsequenceOf (slist "") (slist "Hello World!")
+True
+>>> isSubsequenceOf (slist "Hallo") (slist "Hello World!")
+False
+
+/Note:/ this function hangs if the second slist is infinite.
+
+@
+>> __isSuffixOf /anything/ (infiniteSlist [1..])__
+\</hangs/\>
+@
+
+Use 'safeIsSuffixOf' instead.
+-}
 isSubsequenceOf :: Eq a => Slist a -> Slist a -> Bool
 isSubsequenceOf (Slist l1 s1) (Slist l2 s2)
     | s1 > s2 = False
     | otherwise = L.isSubsequenceOf l1 l2
 {-# INLINE isSubsequenceOf #-}
 
+{- | Similar to 'isSubsequenceOf', but never hangs on infinite lists
+and returns 'False' in that case.
+
+>>> safeIsSubsequenceOf (infiniteSlist [1..]) (infiniteSlist [1..])
+False
+>>> safeIsSubsequenceOf (infiniteSlist [0..]) (infiniteSlist [1..])
+False
+-}
 safeIsSubsequenceOf :: Eq a => Slist a -> Slist a -> Bool
 safeIsSubsequenceOf sl1@(Slist _ s1) sl2@(Slist _ s2)
     | s1 == Infinity && s2 == Infinity = False
@@ -658,10 +1319,28 @@ safeIsSubsequenceOf sl1@(Slist _ s1) sl2@(Slist _ s2)
 -- Searching
 ----------------------------------------------------------------------------
 
+{- | @O(n)@.
+Looks up by the given key in the slist of key-value pairs.
+
+>>> lookup 42 $ slist $ [(1, "one"), (2, "two")]
+Nothing
+>>> lookup 42 $ slist $ [(1, "one"), (2, "two"), (42, "life, the universe and everything")]
+Just "life, the universe and everything"
+>>> lookup 1 $ zip (infiniteSlist  [1..]) (infiniteSlist [0..])
+Just 0
+-}
 lookup :: Eq a => a -> Slist (a, b) -> Maybe b
 lookup a = L.lookup a . sList
 {-# INLINE lookup #-}
 
+{- | @O(n)@.
+Returns the slist of the elements that satisfy the given predicate.
+
+>>> filter (<3) $ slist [1..5]
+Slist {sList = [1,2], sSize = Size 2}
+>>> take 5 $ filter odd $ infiniteSlist [1..]
+Slist {sList = [1,3,5,7,9], sSize = Size 5}
+-}
 filter :: forall a . (a -> Bool) -> Slist a -> Slist a
 filter p (Slist l Infinity) = infiniteSlist $ L.filter p l
 filter p Slist{..} = let (newS, newL) = go 0 sList in
@@ -675,6 +1354,13 @@ filter p Slist{..} = let (newS, newL) = go 0 sList in
         else go n xs
 {-# INLINE filter #-}
 
+{- | @O(n)@.
+Returns the pair of slists of elements which do and do not satisfy
+the given predicate.
+
+>>> partition (<3) $ slist [1..5]
+(Slist {sList = [1,2], sSize = Size 2},Slist {sList = [3,4,5], sSize = Size 3})
+-}
 partition :: forall a . (a -> Bool) -> Slist a -> (Slist a, Slist a)
 partition p (Slist l Infinity) = bimap infiniteSlist infiniteSlist $ L.partition p l
 partition p Slist{..} = let (s1, l1, l2) = go 0 sList in
@@ -692,28 +1378,96 @@ partition p Slist{..} = let (s1, l1, l2) = go 0 sList in
 -- Indexing
 ----------------------------------------------------------------------------
 
+{- | @O(i) | i < n@ and @O(1) | otherwise@.
+
+Returns the element of the slist at the given position.
+If the @i@ exceeds the length of the slist the function returns 'Nothing'.
+
+>>> let sl = slist [1..10]
+>>> at 0 sl
+Just 1
+>>> at (-1) sl
+Nothing
+>>> at 11 sl
+Nothing
+>>> at 9 sl
+Just 10
+-}
 at :: Int -> Slist a -> Maybe a
 at n Slist{..}
     | n < 0 || Size n >= sSize = Nothing
     | otherwise = Just $ sList L.!! n
 {-# INLINE at #-}
 
+{- | @O(min i n)@.
+Unsafe version of the 'at' function.
+If the element on the given position does not exist
+it throws the exception at run-time.
+
+>>> let sl = slist [1..10]
+>>> unsafeAt 0 sl
+1
+>>> unsafeAt (-1) sl
+*** Exception: Prelude.!!: negative index
+>>> unsafeAt 11 sl
+*** Exception: Prelude.!!: index too large
+>>> unsafeAt 9 sl
+10
+-}
 unsafeAt :: Int -> Slist a -> a
 unsafeAt n Slist{..} = sList L.!! n
 {-# INLINE unsafeAt #-}
 
+{- | @O(n)@.
+Returns the index of the first element in the given slist which is equal
+(by '==') to the query element, or 'Nothing' if there is no such element.
+
+>>> elemIndex 5 $ slist [1..10]
+Just 4
+>>> elemIndex 0 $ slist [1..10]
+Nothing
+-}
 elemIndex :: Eq a => a -> Slist a -> Maybe Int
 elemIndex a = L.elemIndex a . sList
 {-# INLINE elemIndex #-}
 
+{- | @O(n)@.
+Extends 'elemIndex', by returning the indices of all elements equal
+to the query element, in ascending order.
+
+>>> elemIndices 1 $ slist [1,1,1,2,2,4,5,1,9,1]
+Slist {sList = [0,1,2,7,9], sSize = Size 5}
+>>> take 5 $ elemIndices 1 $ repeat 1
+Slist {sList = [0,1,2,3,4], sSize = Size 5}
+-}
 elemIndices :: Eq a => a -> Slist a -> Slist Int
 elemIndices a = findIndices (a ==)
 {-# INLINE elemIndices #-}
 
+{- | @O(n)@.
+Returns the index of the first element in the slist satisfying
+the given predicate, or 'Nothing' if there is no such element.
+
+>>> findIndex (>3) $ slist [1..5]
+Just 3
+>>> findIndex (<0) $ slist [1..5]
+Nothing
+-}
 findIndex :: (a -> Bool) -> Slist a -> Maybe Int
 findIndex p = L.findIndex p . sList
 {-# INLINE findIndex #-}
 
+{- | @O(n)@.
+Extends 'findIndex', by returning the indices of all elements
+satisfying the given predicate, in ascending order.
+
+>>> findIndices (<3) $ slist [1..5]
+Slist {sList = [0,1], sSize = Size 2}
+>>> findIndices (<0) $ slist [1..5]
+Slist {sList = [], sSize = Size 0}
+>>> take 5 $ findIndices (<=10) $ infiniteSlist [1..]
+Slist {sList = [0,1,2,3,4], sSize = Size 5}
+-}
 findIndices :: forall a . (a -> Bool) -> Slist a -> Slist Int
 findIndices p (Slist l Infinity) = infiniteSlist $ L.findIndices p l
 findIndices p Slist{..} = let (newS, newL) = go 0 0 sList in
@@ -731,6 +1485,20 @@ findIndices p Slist{..} = let (newS, newL) = go 0 0 sList in
 -- Zipping
 ----------------------------------------------------------------------------
 
+{- | @O(min n m)@.
+Takes two slists and returns a slist of corresponding pairs.
+
+>>> zip (slist [1,2]) (slist ["one", "two"])
+Slist {sList = [(1,"one"),(2,"two")], sSize = Size 2}
+>>> zip (slist [1,2,3]) (slist ["one", "two"])
+Slist {sList = [(1,"one"),(2,"two")], sSize = Size 2}
+>>> zip (slist [1,2]) (slist ["one", "two", "three"])
+Slist {sList = [(1,"one"),(2,"two")], sSize = Size 2}
+>>> zip mempty (slist [1..5])
+Slist {sList = [], sSize = Size 0}
+>>> zip (infiniteSlist [1..]) (slist ["one", "two"])
+Slist {sList = [(1,"one"),(2,"two")], sSize = Size 2}
+-}
 zip :: Slist a -> Slist b -> Slist (a, b)
 zip (Slist l1 s1) (Slist l2 s2) = Slist
     { sList = L.zip l1 l2
@@ -738,6 +1506,9 @@ zip (Slist l1 s1) (Slist l2 s2) = Slist
     }
 {-# INLINE zip #-}
 
+{- | @O(minimum [n1, n2, n3])@.
+Takes three slists and returns a slist of triples, analogous to 'zip'.
+-}
 zip3 :: Slist a -> Slist b -> Slist c -> Slist (a, b, c)
 zip3 (Slist l1 s1) (Slist l2 s2) (Slist l3 s3) = Slist
     { sList = L.zip3 l1 l2 l3
@@ -745,6 +1516,11 @@ zip3 (Slist l1 s1) (Slist l2 s2) (Slist l3 s3) = Slist
     }
 {-# INLINE zip3 #-}
 
+{- | @O(min n m)@.
+Generalises 'zip' by zipping with the given function, instead of a tupling function.
+
+For example, @zipWith (+)@ is applied to two lists to produce the list of corresponding sums.
+-}
 zipWith :: (a -> b -> c) -> Slist a -> Slist b -> Slist c
 zipWith f (Slist l1 s1) (Slist l2 s2) = Slist
     { sList = L.zipWith f l1 l2
@@ -752,6 +1528,10 @@ zipWith f (Slist l1 s1) (Slist l2 s2) = Slist
     }
 {-# INLINE zipWith #-}
 
+{- | @O(minimum [n1, n2, n3])@.
+Takes a function which combines three elements, as well as three slists
+and returns a slist of their point-wise combination, analogous to 'zipWith'.
+-}
 zipWith3 :: (a -> b -> c -> d) -> Slist a -> Slist b -> Slist c -> Slist d
 zipWith3 f (Slist l1 s1) (Slist l2 s2) (Slist l3 s3) = Slist
     { sList = L.zipWith3 f l1 l2 l3
@@ -759,6 +1539,13 @@ zipWith3 f (Slist l1 s1) (Slist l2 s2) (Slist l3 s3) = Slist
     }
 {-# INLINE zipWith3 #-}
 
+{- | @O(n)@.
+Transforms a slist of pairs into a slist of first components
+and a slist of second components.
+
+>>> unzip $ slist [(1,"one"),(2,"two")]
+(Slist {sList = [1,2], sSize = Size 2},Slist {sList = ["one","two"], sSize = Size 2})
+-}
 unzip :: Slist (a, b) -> (Slist a, Slist b)
 unzip Slist{..} = let (as, bs) = L.unzip sList in (l as, l bs)
   where
@@ -766,6 +1553,9 @@ unzip Slist{..} = let (as, bs) = L.unzip sList in (l as, l bs)
     l x = Slist x sSize
 {-# INLINE unzip #-}
 
+{- | @O(n)@.
+Takes a slist of triples and returns three slists, analogous to 'unzip'.
+-}
 unzip3 :: Slist (a, b, c) -> (Slist a, Slist b, Slist c)
 unzip3 Slist{..} = let (as, bs, cs) = L.unzip3 sList in (l as, l bs, l cs)
   where
@@ -777,10 +1567,42 @@ unzip3 Slist{..} = let (as, bs, cs) = L.unzip3 sList in (l as, l bs, l cs)
 -- Sets
 ----------------------------------------------------------------------------
 
+{- $sets
+
+Set is a special case of slists so that it consist of the unique elements.
+
+Example of set:
+
+@
+Slist {sList = "qwerty", sSize = Size 6}
+Slist {sList = [1..], sSize = Infinity}
+@
+-}
+
+{- | @O(n^2)@.
+Removes duplicate elements from a slist. In particular,
+it keeps only the first occurrence of each element.
+
+It is a special case of 'nubBy', which allows to supply your own equality test.
+
+>>> nub $ replicate 5 'a'
+Slist {sList = "a", sSize = Size 1}
+>>> nub mempty
+Slist {sList = [], sSize = Size 0}
+>>> nub $ slist [1,2,3,4,3,2,1,2,4,3,5]
+Slist {sList = [1,2,3,4,5], sSize = Size 5}
+-}
 nub :: Eq a => Slist a -> Slist a
 nub = nubBy (==)
 {-# INLINE nub #-}
 
+{- | @O(n^2)@.
+Behaves just like 'nub', except it uses a user-supplied equality predicate
+instead of the overloaded '==' function.
+
+>>> nubBy (\x y -> mod x 3 == mod y 3) $ slist [1,2,4,5,6]
+Slist {sList = [1,2,6], sSize = Size 3}
+-}
 nubBy :: forall a . (a -> a -> Bool) -> Slist a -> Slist a
 nubBy f Slist{..} = let (s, l) = go 0 [] sList in case sSize of
     Infinity -> infiniteSlist l
@@ -794,10 +1616,24 @@ nubBy f Slist{..} = let (s, l) = go 0 [] sList in case sSize of
         else go (n + 1) (res ++ [x]) xs
 {-# INLINE nubBy #-}
 
+{- | @O(n)@.
+Removes the first occurrence of the given element from its slist argument.
+
+>>> delete 'h' $ slist "hahaha"
+Slist {sList = "ahaha", sSize = Size 5}
+>>> delete 0 $ slist [1..3]
+Slist {sList = [1,2,3], sSize = Size 3}
+-}
 delete :: Eq a => a -> Slist a -> Slist a
 delete = deleteBy (==)
 {-# INLINE delete #-}
 
+{- | @O(n)@.
+Behaves like 'delete', but takes a user-supplied equality predicate.
+
+>>> deleteBy (>=) 4 $ slist [1..10]
+Slist {sList = [2,3,4,5,6,7,8,9,10], sSize = Size 9}
+-}
 deleteBy :: forall a . (a -> a -> Bool) -> a -> Slist a -> Slist a
 deleteBy f a (Slist l Infinity) = infiniteSlist $ L.deleteBy f a l
 deleteBy f a Slist{..} = let (del, res) = go sList in
@@ -810,26 +1646,83 @@ deleteBy f a Slist{..} = let (del, res) = go sList in
         else second (x:) $ go xs
 {-# INLINE deleteBy #-}
 
+{- | @O(n*m)@.
+Takes a predicate and two slists and returns the first slist
+with the first occurrence of each element of the second slist removed.
+
+>>> deleteFirstsBy (==) (slist [1..5]) (slist [2,8,4,10,1])
+Slist {sList = [3,5], sSize = Size 2}
+-}
 deleteFirstsBy :: (a -> a -> Bool) -> Slist a -> Slist a -> Slist a
 deleteFirstsBy f = foldr (deleteBy f)
 {-# INLINE deleteFirstsBy #-}
 
+{- | @O(n*m)@.
+Returns the difference between two slists. The operation is non-associative.
+In the result of @diff xs ys@, the first occurrence of each element of @ys@
+in turn (if any) has been removed from @xs@. Thus
+
+> diff (xs <> ys) ys == xs
+
+>>> diff (slist [1..10]) (slist [1,3..10])
+Slist {sList = [2,4,6,8,10], sSize = Size 5}
+>>> diff (slist [1,3..10]) (slist [2,4..10])
+Slist {sList = [1,3,5,7,9], sSize = Size 5}
+-}
 diff :: Eq a => Slist a -> Slist a -> Slist a
 diff = foldr delete
 {-# INLINE diff #-}
 
+{- | @O(n*m)@.
+Returns the list union of the two slists.
+
+>>> union (slist "pen") (slist "apple")
+Slist {sList = "penal", sSize = Size 5}
+
+Duplicates, and elements of the first slist, are removed from the the second slist,
+but if the first slist contains duplicates, so will the result.
+
+>>> union (slist "apple") (slist "pen")
+Slist {sList = "applen", sSize = Size 6}
+
+It is a special case of 'unionBy'.
+-}
 union :: Eq a => Slist a -> Slist a -> Slist a
 union = unionBy (==)
 {-# INLINE union #-}
 
+{- | @O(n*m)@.
+Non-overloaded version of 'union'.
+-}
 unionBy :: (a -> a -> Bool) -> Slist a -> Slist a -> Slist a
 unionBy f xs ys = xs <> deleteFirstsBy f (nubBy f ys) xs
 {-# INLINE unionBy #-}
 
+{- | @O(n*m)@.
+Returns the slist intersection of two slists.
+
+>>> intersect (slist [1,2,3,4]) (slist [2,4,6,8])
+Slist {sList = [2,4], sSize = Size 2}
+
+If the first list contains duplicates, so will the result.
+
+>>> intersect (slist [1,2,2,3,4]) (slist [6,4,4,2])
+Slist {sList = [2,2,4], sSize = Size 3}
+
+If the first slist is infinite, so will be the result.
+
+If the element is found in both the first and the second slist,
+the element from the first slist will be used.
+
+It is a special case of 'intersectBy'.
+-}
 intersect :: Eq a => Slist a -> Slist a -> Slist a
 intersect = intersectBy (==)
 {-# INLINE intersect #-}
 
+{- | @O(n*m)@.
+Non-overloaded version of 'intersect'.
+-}
 intersectBy :: forall a . (a -> a -> Bool) -> Slist a -> Slist a -> Slist a
 intersectBy _ (Slist _ (Size 0)) _ = mempty
 intersectBy _ _ (Slist _ (Size 0)) = mempty
@@ -849,22 +1742,66 @@ intersectBy f (Slist l1 _) (Slist l2 _) =
 -- Ordered slists
 ----------------------------------------------------------------------------
 
+{- | @O(n log n)@.
+implements a stable sorting algorithm. It is a special case of 'sortBy'.
+
+Elements are arranged from from lowest to highest, keeping duplicates
+in the order they appeared in the input.
+
+>>> sort $ slist [10, 9..1]
+Slist {sList = [1,2,3,4,5,6,7,8,9,10], sSize = Size 10}
+
+/Note:/ this function hangs on infinite slists.
+-}
 sort :: Ord a => Slist a -> Slist a
 sort = sortBy compare
 {-# INLINE sort #-}
 
+{- | @O(n log n)@.
+Non-overloaded version of 'sort'.
+
+>>> sortBy (\(a,_) (b,_) -> compare a b) $ slist [(2, "world"), (4, "!"), (1, "Hello")]
+Slist {sList = [(1,"Hello"),(2,"world"),(4,"!")], sSize = Size 3}
+
+/Note:/ this function hangs on infinite slists.
+-}
 sortBy :: (a -> a -> Ordering) -> Slist a -> Slist a
 sortBy f Slist{..} = Slist (L.sortBy f sList) sSize
 {-# INLINE sortBy #-}
 
+{- | @O(n log n)@.
+Sorts a list by comparing the results of a key function applied to each
+element.  @sortOn f@ is equivalent to @'sortBy' ('comparing' f)@, but has the
+performance advantage of only evaluating @f@ once for each element in the
+input list.  This is called the decorate-sort-undecorate paradigm, or
+Schwartzian transform.
+
+Elements are arranged from lowest to highest, keeping duplicates in
+the order they appeared in the input.
+
+>>> sortOn fst $ slist [(2, "world"), (4, "!"), (1, "Hello")]
+Slist {sList = [(1,"Hello"),(2,"world"),(4,"!")], sSize = Size 3}
+
+/Note:/ this function hangs on infinite slists.
+-}
 sortOn :: Ord b => (a -> b) -> Slist a -> Slist a
 sortOn f Slist{..} = Slist (L.sortOn f sList) sSize
 {-# INLINE sortOn #-}
 
+{- | @O(n)@.
+Takes an element and a slist and inserts the element into the slist
+at the first position where it is less than or equal to the next element.
+In particular, if the list is sorted before the call, the result will also
+be sorted. It is a special case of 'insertBy'.
+
+>>> insert 4 $ slist [1,2,3,5,6]
+Slist {sList = [1,2,3,4,5,6], sSize = Size 6}
+-}
 insert :: Ord a => a -> Slist a -> Slist a
 insert = insertBy compare
 {-# INLINE insert #-}
 
+-- | @O(n)@. The non-overloaded version of 'insert'.
 insertBy :: (a -> a -> Ordering) -> a -> Slist a -> Slist a
 insertBy f a Slist{..} = Slist (L.insertBy f a sList) (sSize + 1)
 {-# INLINE insertBy #-}

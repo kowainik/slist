@@ -1,24 +1,44 @@
+-- | Lists size representation
+
 module Slist.Size
        ( Size (..)
-       , sizeMin
        , sizes
        ) where
 
 
+{- | Data type that represents lists size/lengths.
+
++-----------+----------+------------+
+| List      | @length@ | Size       |
++===========+==========+============+
+| @[]@      | @0@      | @Size 0@   |
++-----------+----------+------------+
+| @[1..10]@ | @10@     | @Size 10@  |
++-----------+----------+------------+
+| @[1..]@   | /hangs/  | @Infinity@ |
++-----------+----------+------------+
+
+Note, that size is not suppose to have negative value, so use
+the 'Size' constructor carefully.
+-}
 data Size
+    -- | Finite size
     = Size !Int
+    -- | Infinite size.
     | Infinity
     deriving (Show, Read, Eq, Ord)
 
+{- | Efficient implementations of numeric operations with 'Size's.
+
+Any operations with 'Infinity' size results into 'Infinity'.
+
+TODO: checking on overflow when '+' or '*' sizes.
+-}
 instance Num Size where
     (+) :: Size -> Size -> Size
     Infinity + _ = Infinity
     _ + Infinity = Infinity
-    (Size x) + (Size y) = let res = x + y in
-        -- checking on the overflowing
-        if res < 0
-        then Infinity
-        else Size res
+    (Size x) + (Size y) = Size $ x + y
     {-# INLINE (+) #-}
 
     (-) :: Size -> Size -> Size
@@ -47,6 +67,9 @@ instance Num Size where
     fromInteger = Size . fromInteger
     {-# INLINE fromInteger #-}
 
+{- | The minimum possible size for the list is empty list: @Size 0@
+The maximum possible size is 'Infinity'.
+-}
 instance Bounded Size where
     minBound :: Size
     minBound = Size 0
@@ -54,13 +77,16 @@ instance Bounded Size where
     maxBound :: Size
     maxBound = Infinity
 
--- | Returns the minimum size.
-sizeMin :: Int -> Size -> Size
-sizeMin i s = Size $ max 0 $ case s of
-    Infinity -> i
-    Size n   -> min i n
+{- | Returns the list of sizes from zero to the given one (including).
 
--- | Returns the list of sizes from zero to given one (including).
+>>> sizes $ Size 3
+[Size 0,Size 1,Size 2,Size 3]
+
+@
+>> __sizes Infinity__
+[Size 0, Size 1, ..., Size 'maxBound', Infinity]
+@
+-}
 sizes :: Size -> [Size]
 sizes (Size n) = map Size [0..n]
 sizes Infinity = map Size [0..maxBound] ++ [Infinity]
