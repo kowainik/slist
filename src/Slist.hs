@@ -7,7 +7,68 @@ Copyright:  (c) 2019 vrom911
 License:    MPL-2.0
 Maintainer: Veronika Romashkina <vrom911@gmail.com>
 
-This module introduces sized list data type — 'Slist'.
+This module introduces sized list data type — 'Slist'. The data type
+has the following shape:
+
+@
+__data__ 'Slist' a = Slist
+    { sList :: [a]
+    , sSize :: 'Size'
+    }
+@
+
+As you can see along with the familiar list, it contains 'Size' field that
+represents the size of the structure. Slists can be finite or infinite, and this
+is expressed with 'Size'.
+
+@
+__data__ 'Size'
+    = Size 'Int'
+    | Infinity
+@
+
+This representation of the list gives some additional advantages. Getting the
+length of the list is the "free" operation (runs in \( O(1) \)). This property
+helps to improve the performance for a bunch of functions like 'take', 'drop',
+'at', etc. But also it doesn't actually add any overhead on the existing
+functions.
+
+Also, this allows to write a number of safe functions like 'safeReverse',
+'safeHead', 'safeLast', 'safeIsSuffixOf', etc.
+
+== Comparison
+
+Check out the comparison table between lists and slists performance.
+
++-------------------+--------------------+--------------------+-----------------------+-----------------------+
+| Function          | list (finite)      | list (infinite)    | Slist (finite)        | Slist (infinite)      |
++===================+====================+====================+=======================+=======================+
+| 'length'          | \( O(n) \)         | \</hangs/\>        |  \( O(1) \)           |   \( O(1) \)          |
++-------------------+--------------------+--------------------+-----------------------+-----------------------+
+| 'safeLast'        | \( O(n) \)         | \</hangs/\>        |  \( O(n) \)           |   \( O(1) \)          |
++-------------------+--------------------+--------------------+-----------------------+-----------------------+
+| 'init'            | \( O(n) \)         | \</hangs/\>        |  \( O(n) \)           |   \( O(1) \)          |
++-------------------+--------------------+--------------------+-----------------------+-----------------------+
+| 'take'            | \( O(min\ i\ n) \) | \( O(i) \)         | @0 < i < n@: \(O(i)\) |              \(O(i)\) |
+|                   |                    |                    | otherwise:   \(O(1)\) |                       |
++-------------------+--------------------+--------------------+-----------------------+-----------------------+
+| 'at'              | \( O(min\ i\ n) \) | \( O(i) \)         | @0 < i < n@: \(O(i)\) |   \( O(i) \)          |
+|                   | run-time exception | run-time exception | otherwise:   \(O(1)\) |                       |
++-------------------+--------------------+--------------------+-----------------------+-----------------------+
+| 'safeStripPrefix' | \( O(m) \)         |  \( O(m) \)        |  \( O(m) \)           |   \( O(m) \)          |
+|                   |                    | can hang           |                       |                       |
++-------------------+--------------------+--------------------+-----------------------+-----------------------+
+
+== Potential usage cases
+
+* When you ask the length of the list too frequently.
+* When you need to convert to data structures that require to know the list
+  size in advance for allocating an array of the elements. /Example:/ [Vector data
+  structure](https://hackage.haskell.org/package/vector).
+* When you need to serialised lists.
+* When you need to control the behaviour depending on the finiteness of the list.
+* When you need a more efficient or safe implementation of some functions.
+
 -}
 
 module Slist
@@ -1771,7 +1832,7 @@ sortBy f Slist{..} = Slist (L.sortBy f sList) sSize
 
 {- | @O(n log n)@.
 Sorts a list by comparing the results of a key function applied to each
-element.  @sortOn f@ is equivalent to @'sortBy' ('comparing' f)@, but has the
+element.  @sortOn f@ is equivalent to @'sortBy' (comparing f)@, but has the
 performance advantage of only evaluating @f@ once for each element in the
 input list.  This is called the decorate-sort-undecorate paradigm, or
 Schwartzian transform.
