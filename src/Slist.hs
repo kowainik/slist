@@ -1053,8 +1053,14 @@ Slist {sList = [], sSize = Size 0}
 Slist {sList = [1,2,3,4,5,6,7,8,9,10], sSize = Size 10}
 >>> take 5 $ dropWhile (<3) $ infiniteSlist [1..]
 Slist {sList = [3,4,5,6,7], sSize = Size 5}
+
+@
+>> __dropWhile (< 5) $ 'infiniteSlist' [1..]__
+Slist {sList = [5,6..], sSize = 'Infinity'}
+@
 -}
 dropWhile :: forall a . (a -> Bool) -> Slist a -> Slist a
+dropWhile p (Slist l Infinity) = Slist (P.dropWhile p l) Infinity
 dropWhile p Slist{..} = let (s, l) = go 0 sList in
     Slist l (sSize - Size s)
   where
