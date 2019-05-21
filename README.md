@@ -41,7 +41,7 @@ Check out the comparison table between lists and slists performance.
 |-------------------|-----------------------------------|-----------------------------|----------------------------------------|------------------|
 | `length`          | `O(n)`                            | <_hangs_>                   | `O(1)`                                 | `O(1)`           |
 | `safeLast`        | `O(n)`                            | <_hangs_>                   | `O(n)`                                 | `O(1)`           |
-| `init`            | `O(n)`                            | <_hangs_>                   | `O(n)`                                 | `O(1)`           |
+| `init`            | `O(n)`                            | <_works infinitely_>        | `O(n)`                                 | `O(1)`           |
 | `take`            | `O(min i n)`                      | `O(i)`                      | `0 < i < n`: `O(i)`; otherwise: `O(1)` | `O(i)`           |
 | `at`              | `O(min i n)` (run-time exception) | `O(i)` (run-time exception) | `0 < i < n`: `O(i)`; otherwise: `O(1)` | `O(i)`           |
 | `safeStripPrefix` | `O(m)`                            | `O(m)` (can hang)           | `O(m)`                                 | `O(m)`           |
