@@ -1,4 +1,4 @@
-cabal-version:       2.4
+cabal-version:       3.0
 name:                slist
 version:             0.0.0
 synopsis:            Sized list
@@ -18,13 +18,14 @@ extra-doc-files:     README.md
 tested-with:         GHC == 8.2.2
                    , GHC == 8.4.4
                    , GHC == 8.6.5
+                   , GHC == 8.8.1
 
 source-repository head
   type:                git
   location:            https://github.com/vrom911/slist.git
 
 common common-options
-  build-depends:       base >= 4.10.1.0 && < 4.13
+  build-depends:       base >= 4.10.1.0 && < 4.14
 
   ghc-options:         -Wall
                        -Wincomplete-uni-patterns
