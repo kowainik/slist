@@ -86,6 +86,7 @@ module Slist
        , repeat
        , replicate
        , cycle
+       , fromRange
          -- * Basic functions
        , len
        , size
@@ -489,6 +490,25 @@ cycle :: Slist a -> Slist a
 cycle sl@(Slist _ Infinity) = sl
 cycle Slist{..}             = infiniteSlist $ L.cycle sList
 {-# INLINE cycle #-}
+
+{- | @O(1)@. An slist equivalent of 'P.enumFromTo' function or @[from..to]@ notation:
+creates an 'Slist' of sequentially ordered values starting at @from@ and ending at @to@ inclusively.
+
+>>> fromRange 0 5
+Slist {sList = [0,1,2,3,4,5], sSize = Size 6}
+>>> fromRange 5 0
+Slist {sList = [], sSize = Size 0}
+>>> fromRange 0 0
+Slist {sList = [0], sSize = Size 1}
+>>> fromRange 'a' 'd'
+Slist {sList = "abcd", sSize = Size 4}
+-}
+fromRange :: Enum a => a -> a -> Slist a
+fromRange from to = Slist [from..to] s
+  where
+    s :: Size
+    s = Size $ max 0 (fromEnum to - fromEnum from + 1)
+{-# INLINE fromRange #-}
 
 ----------------------------------------------------------------------------
 -- Basic functions
