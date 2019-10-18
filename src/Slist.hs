@@ -197,7 +197,7 @@ module Slist
        , genericTake
        , genericDrop
        , genericSplitAt
-       , genericIndex
+       , genericUnsafeAt
        , genericReplicate
        ) where
 
