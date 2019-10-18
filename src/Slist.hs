@@ -191,6 +191,14 @@ module Slist
        , sortOn
        , insert
        , insertBy
+
+        -- * Generic functions
+       , genericLength
+       , genericTake
+       , genericDrop
+       , genericSplitAt
+       , genericIndex
+       , genericReplicate
        ) where
 
 import Control.Applicative (Alternative (empty, (<|>)), liftA2)
@@ -1892,3 +1900,71 @@ insert = insertBy compare
 insertBy :: (a -> a -> Ordering) -> a -> Slist a -> Slist a
 insertBy f a Slist{..} = Slist (L.insertBy f a sList) (sSize + 1)
 {-# INLINE insertBy #-}
+
+----------------------------------------------------------------------------
+-- Generic fuctions
+----------------------------------------------------------------------------
+
+-- | O(1)
+-- The 'genericLength' function is an overloaded version of 'length'.  In
+-- particular, instead of returning an 'Int', it returns any type which is
+-- an instance of 'Num'.
+genericLength :: Num i => Slist a -> i
+genericLength = fromIntegral . length
+{-# INLINE genericLength #-}
+
+-- | @O(i) | i < n@ and @O(1) | otherwise@.
+-- The 'genericTake' function is an overloaded version of 'take', which
+-- accepts any 'Integral' value as the number of elements to take.
+genericTake :: Integral i => i -> Slist a -> Slist a
+genericTake n Slist{..}
+    | n <= 0 = mempty
+    | otherwise = Slist
+        { sList = L.genericTake n sList
+        , sSize = min sSize (Size (fromIntegral n))
+        }
+{-# INLINE genericTake #-}
+
+-- | @O(i) | i < n@ and @O(1) | otherwise@.
+-- The 'genericDrop' function is an overloaded version of 'drop', which
+-- accepts any 'Integral' value as the number of elements to drop.
+genericDrop :: Integral i => i -> Slist a -> Slist a
+genericDrop n sl@Slist{..}
+    | n <= 0 = sl
+    | Size (fromIntegral n) >= sSize = mempty
+    | otherwise = Slist
+        { sList = L.genericDrop n sList
+        , sSize = sSize - Size (fromIntegral n)
+        }
+{-# INLINE genericDrop #-}
+
+-- | @O(i) | i < n@ and @O(1) | otherwise@.
+-- The 'genericSplitAt' function is an overloaded version of 'splitAt', which
+-- accepts any 'Integral' value as the position at which to split.
+genericSplitAt :: Integral i => i -> Slist a -> (Slist a, Slist a)
+genericSplitAt i sl@Slist{..}
+    | i <= 0 = (mempty, sl)
+    | Size (fromIntegral i) >= sSize = (sl, mempty)
+    | otherwise =
+      let (l1, l2) = L.genericSplitAt i sList
+          s2 = sSize - Size (fromIntegral i)
+      in (Slist l1 $ Size (fromIntegral i), Slist l2 s2)
+{-# INLINE genericSplitAt #-}
+
+-- TODO: replace this with genericFindIndex?
+genericUnsafeAt :: Integral i => Slist a -> i -> a
+genericUnsafeAt _ i | i < 0 = errorWithoutStackTrace "Slist.genericIndex: negative argument."
+genericUnsafeAt (Slist l Infinity) i = L.genericIndex l i
+genericUnsafeAt (Slist l (Size s)) i
+    | i >= fromIntegral s = errorWithoutStackTrace "Slist.genericIndex: index too large."
+    | otherwise = L.genericIndex l i
+{-# INLINE genericIndex #-}
+
+-- | @O(n)@
+-- The 'genericReplicate' function is an overloaded version of 'replicate',
+-- which accepts any 'Integral' value as the number of repetitions to make.
+genericReplicate :: Integral i => i -> a -> Slist a
+genericReplicate n x
+    | n <= 0 = mempty
+    | otherwise = Slist (L.genericReplicate n x) $ Size (fromIntegral n)
+{-# INLINE genericReplicate #-}
