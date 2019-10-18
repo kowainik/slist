@@ -1958,7 +1958,7 @@ genericUnsafeAt (Slist l Infinity) i = L.genericIndex l i
 genericUnsafeAt (Slist l (Size s)) i
     | i >= fromIntegral s = errorWithoutStackTrace "Slist.genericIndex: index too large."
     | otherwise = L.genericIndex l i
-{-# INLINE genericIndex #-}
+{-# INLINE genericUnsafeAt #-}
 
 -- | @O(n)@
 -- The 'genericReplicate' function is an overloaded version of 'replicate',
