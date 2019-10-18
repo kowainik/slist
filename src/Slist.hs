@@ -1951,12 +1951,15 @@ genericSplitAt i sl@Slist{..}
       in (Slist l1 $ Size (fromIntegral i), Slist l2 s2)
 {-# INLINE genericSplitAt #-}
 
--- TODO: replace this with genericFindIndex?
+-- | @O(min i n)@
+-- The 'genericUnsafeAt' function is an overloaded version of 'unsafeAt', which
+-- accepts any 'Integral' value as the position. If the element on the given
+-- position does not exist it throws the exception at run-time.
 genericUnsafeAt :: Integral i => Slist a -> i -> a
 genericUnsafeAt _ i | i < 0 = errorWithoutStackTrace "Slist.genericIndex: negative argument."
 genericUnsafeAt (Slist l Infinity) i = L.genericIndex l i
-genericUnsafeAt (Slist l (Size s)) i
-    | i >= fromIntegral s = errorWithoutStackTrace "Slist.genericIndex: index too large."
+genericUnsafeAt (Slist l (Size n)) i
+    | i >= fromIntegral n = errorWithoutStackTrace "Slist.genericIndex: index too large."
     | otherwise = L.genericIndex l i
 {-# INLINE genericUnsafeAt #-}
 
