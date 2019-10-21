@@ -1918,8 +1918,9 @@ genericLength = fromIntegral . length
 -- The 'genericTake' function is an overloaded version of 'take', which
 -- accepts any 'Integral' value as the number of elements to take.
 genericTake :: Integral i => i -> Slist a -> Slist a
-genericTake n Slist{..}
-    | n <= 0 = mempty
+genericTake i sl@Slist{..}
+    | Size i' >= sSize = sl
+    | i' <= 0 = mempty
     | otherwise = Slist
         { sList = L.genericTake n sList
         , sSize = min sSize (Size (fromIntegral n))
