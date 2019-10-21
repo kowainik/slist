@@ -1922,22 +1922,24 @@ genericTake i sl@Slist{..}
     | Size i' >= sSize = sl
     | i' <= 0 = mempty
     | otherwise = Slist
-        { sList = L.genericTake n sList
-        , sSize = min sSize (Size (fromIntegral n))
+        { sList = L.genericTake i sList
+        , sSize = min sSize (Size i')
         }
+    where i' = fromIntegral i
 {-# INLINE genericTake #-}
 
 -- | @O(i) | i < n@ and @O(1) | otherwise@.
 -- The 'genericDrop' function is an overloaded version of 'drop', which
 -- accepts any 'Integral' value as the number of elements to drop.
 genericDrop :: Integral i => i -> Slist a -> Slist a
-genericDrop n sl@Slist{..}
-    | n <= 0 = sl
-    | Size (fromIntegral n) >= sSize = mempty
+genericDrop i sl@Slist{..}
+    | i <= 0 = sl
+    | Size i' >= sSize = mempty
     | otherwise = Slist
-        { sList = L.genericDrop n sList
-        , sSize = sSize - Size (fromIntegral n)
+        { sList = L.genericDrop i sList
+        , sSize = sSize - Size i'
         }
+    where i' = fromIntegral i
 {-# INLINE genericDrop #-}
 
 -- | @O(i) | i < n@ and @O(1) | otherwise@.
@@ -1946,11 +1948,13 @@ genericDrop n sl@Slist{..}
 genericSplitAt :: Integral i => i -> Slist a -> (Slist a, Slist a)
 genericSplitAt i sl@Slist{..}
     | i <= 0 = (mempty, sl)
-    | Size (fromIntegral i) >= sSize = (sl, mempty)
+    | Size i' >= sSize = (sl, mempty)
     | otherwise =
       let (l1, l2) = L.genericSplitAt i sList
-          s2 = sSize - Size (fromIntegral i)
-      in (Slist l1 $ Size (fromIntegral i), Slist l2 s2)
+          s2 = sSize - Size i'
+      in (Slist l1 $ Size i', Slist l2 s2)
+    where
+      i' = fromIntegral i
 {-# INLINE genericSplitAt #-}
 
 -- TODO: Add doc
