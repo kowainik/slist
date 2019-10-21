@@ -197,6 +197,7 @@ module Slist
        , genericTake
        , genericDrop
        , genericSplitAt
+       , genericAt
        , genericUnsafeAt
        , genericReplicate
        ) where
@@ -1950,6 +1951,14 @@ genericSplitAt i sl@Slist{..}
           s2 = sSize - Size (fromIntegral i)
       in (Slist l1 $ Size (fromIntegral i), Slist l2 s2)
 {-# INLINE genericSplitAt #-}
+
+-- TODO: Add doc
+genericAt :: Integral i => i -> Slist a -> Maybe a
+genericAt n Slist{..}
+    | n' < 0 || Size n' >= sSize = Nothing
+    | otherwise = Just $ sList L.!! n'
+    where n' = fromIntegral n
+{-# INLINE genericAt #-}
 
 -- | @O(min i n)@
 -- The 'genericUnsafeAt' function is an overloaded version of 'unsafeAt', which
