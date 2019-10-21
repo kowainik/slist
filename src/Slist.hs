@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP          #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ViewPatterns #-}
 
 {- |
 Copyright:  (c) 2019 vrom911
@@ -1938,14 +1939,13 @@ Slist {sList = "", sSize = Size 0}
 Slist {sList = [1,2,3,4], sSize = Size 4}
 -}
 genericTake :: Integral i => i -> Slist a -> Slist a
-genericTake i sl@Slist{..}
-    | Size i' >= sSize = sl
-    | i' <= 0 = mempty
+genericTake (fromIntegral -> i) sl@Slist{..}
+    | Size i >= sSize = sl
+    | i <= 0 = mempty
     | otherwise = Slist
         { sList = L.genericTake i sList
-        , sSize = min sSize (Size i')
+        , sSize = min sSize (Size i)
         }
-    where i' = fromIntegral i
 {-# INLINE genericTake #-}
 
 {- | @O(i) | i < n@ and @O(1) | otherwise@.
@@ -1968,14 +1968,13 @@ Slist {sList = [6..], sSize = 'Infinity'}
 
 -}
 genericDrop :: Integral i => i -> Slist a -> Slist a
-genericDrop i sl@Slist{..}
+genericDrop (fromIntegral -> i) sl@Slist{..}
     | i <= 0 = sl
-    | Size i' >= sSize = mempty
+    | Size i >= sSize = mempty
     | otherwise = Slist
         { sList = L.genericDrop i sList
-        , sSize = sSize - Size i'
+        , sSize = sSize - Size i
         }
-    where i' = fromIntegral i
 {-# INLINE genericDrop #-}
 
 {- | @O(i) | i < n@ and @O(1) | otherwise@.
@@ -1998,15 +1997,13 @@ accepts any 'Integral' value as the position at which to split.
 
 -}
 genericSplitAt :: Integral i => i -> Slist a -> (Slist a, Slist a)
-genericSplitAt i sl@Slist{..}
+genericSplitAt (fromIntegral -> i) sl@Slist{..}
     | i <= 0 = (mempty, sl)
-    | Size i' >= sSize = (sl, mempty)
+    | Size i >= sSize = (sl, mempty)
     | otherwise =
       let (l1, l2) = L.genericSplitAt i sList
-          s2 = sSize - Size i'
-      in (Slist l1 $ Size i', Slist l2 s2)
-    where
-      i' = fromIntegral i
+          s2 = sSize - Size i
+      in (Slist l1 $ Size i, Slist l2 s2)
 {-# INLINE genericSplitAt #-}
 
 {- | @O(i) | i < n@ and @O(1) | otherwise@.
@@ -2025,10 +2022,7 @@ Nothing
 Just 10
 -}
 genericAt :: Integral i => i -> Slist a -> Maybe a
-genericAt n Slist{..}
-    | n' < 0 || Size n' >= sSize = Nothing
-    | otherwise = Just $ sList L.!! n'
-    where n' = fromIntegral n
+genericAt = at . fromIntegral
 {-# INLINE genericAt #-}
 
 {- | @O(min i n)@.
