@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP          #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ViewPatterns #-}
 
 {- |
 Copyright:  (c) 2019 vrom911
@@ -191,6 +192,15 @@ module Slist
        , sortOn
        , insert
        , insertBy
+
+        -- * Generic functions
+       , genericLength
+       , genericTake
+       , genericDrop
+       , genericSplitAt
+       , genericAt
+       , genericUnsafeAt
+       , genericReplicate
        ) where
 
 import Control.Applicative (Alternative (empty, (<|>)), liftA2)
@@ -1892,3 +1902,163 @@ insert = insertBy compare
 insertBy :: (a -> a -> Ordering) -> a -> Slist a -> Slist a
 insertBy f a Slist{..} = Slist (L.insertBy f a sList) (sSize + 1)
 {-# INLINE insertBy #-}
+
+----------------------------------------------------------------------------
+-- Generic fuctions
+----------------------------------------------------------------------------
+
+{- | @O(1)@.
+The 'genericLength' function is an overloaded version of 'length'.
+In particular, instead of returning an 'Int', it returns any type which is an
+instance of 'Num'.
+
+>>> genericLength $ one 42
+1
+>>> genericLength $ slist [1..3]
+3
+>>> genericLength $ infiniteSlist [1..]
+9223372036854775807
+-}
+genericLength :: Num i => Slist a -> i
+genericLength = fromIntegral . length
+{-# INLINE genericLength #-}
+
+{- | @O(i) | i < n@ and @O(1) | otherwise@.
+The 'genericTake' function is an overloaded version of 'take', which
+accepts any 'Integral' value as the number of elements to take.
+
+>>> genericTake 5 $ slist "Hello world!"
+Slist {sList = "Hello", sSize = Size 5}
+>>> genericTake 20 $ slist "small"
+Slist {sList = "small", sSize = Size 5}
+>>> genericTake 0 $ slist "none"
+Slist {sList = "", sSize = Size 0}
+>>> genericTake (-11) $ slist "hmm"
+Slist {sList = "", sSize = Size 0}
+>>> genericTake 4 $ infiniteSlist [1..]
+Slist {sList = [1,2,3,4], sSize = Size 4}
+-}
+genericTake :: Integral i => i -> Slist a -> Slist a
+genericTake (fromIntegral -> i) sl@Slist{..}
+    | Size i >= sSize = sl
+    | i <= 0 = mempty
+    | otherwise = Slist
+        { sList = L.genericTake i sList
+        , sSize = min sSize (Size i)
+        }
+{-# INLINE genericTake #-}
+
+{- | @O(i) | i < n@ and @O(1) | otherwise@.
+The 'genericDrop' function is an overloaded version of 'drop', which accepts
+any 'Integral' value as the number of elements to drop.
+
+>>> genericDrop 6 $ slist "Hello World"
+Slist {sList = "World", sSize = Size 5}
+>>> genericDrop 42 $ slist "oops!"
+Slist {sList = "", sSize = Size 0}
+>>> genericDrop 0 $ slist "Hello World!"
+Slist {sList = "Hello World!", sSize = Size 12}
+>>> genericDrop (-4) $ one 42
+Slist {sList = [42], sSize = Size 1}
+
+@
+>> __drop 5 $ 'infiniteSlist' [1..]__
+Slist {sList = [6..], sSize = 'Infinity'}
+@
+
+-}
+genericDrop :: Integral i => i -> Slist a -> Slist a
+genericDrop (fromIntegral -> i) sl@Slist{..}
+    | i <= 0 = sl
+    | Size i >= sSize = mempty
+    | otherwise = Slist
+        { sList = L.genericDrop i sList
+        , sSize = sSize - Size i
+        }
+{-# INLINE genericDrop #-}
+
+{- | @O(i) | i < n@ and @O(1) | otherwise@.
+The 'genericSplitAt' function is an overloaded version of 'splitAt', which
+accepts any 'Integral' value as the position at which to split.
+
+>>> genericSplitAt 5 $ slist "Hello World!"
+(Slist {sList = "Hello", sSize = Size 5},Slist {sList = " World!", sSize = Size 7})
+>>> genericSplitAt 0 $ slist "abc"
+(Slist {sList = "", sSize = Size 0},Slist {sList = "abc", sSize = Size 3})
+>>> genericSplitAt 4 $ slist "abc"
+(Slist {sList = "abc", sSize = Size 3},Slist {sList = "", sSize = Size 0})
+>>> genericSplitAt (-42) $ slist "??"
+(Slist {sList = "", sSize = Size 0},Slist {sList = "??", sSize = Size 2})
+
+@
+>> __genericSplitAt 2 $ 'infiniteSlist' [1..]__
+(Slist {sList = [1,2], sSize = 'Size' 2}, Slist {sList = [3..], sSize = 'Infinity'})
+@
+
+-}
+genericSplitAt :: Integral i => i -> Slist a -> (Slist a, Slist a)
+genericSplitAt (fromIntegral -> i) sl@Slist{..}
+    | i <= 0 = (mempty, sl)
+    | Size i >= sSize = (sl, mempty)
+    | otherwise =
+      let (l1, l2) = L.genericSplitAt i sList
+          s2 = sSize - Size i
+      in (Slist l1 $ Size i, Slist l2 s2)
+{-# INLINE genericSplitAt #-}
+
+{- | @O(i) | i < n@ and @O(1) | otherwise@.
+The 'genericAt' function is an overloaded version of 'at', which
+accepts any 'Integral' value as the position. If the element on the given
+position does not exist it will return 'Nothing'.
+
+>>> let sl = slist [1..10]
+>>> genericAt 0 sl
+Just 1
+>>> genericAt (-1) sl
+Nothing
+>>> genericAt 11 sl
+Nothing
+>>> genericAt 9 sl
+Just 10
+-}
+genericAt :: Integral i => i -> Slist a -> Maybe a
+genericAt = at . fromIntegral
+{-# INLINE genericAt #-}
+
+{- | @O(min i n)@.
+The 'genericUnsafeAt' function is an overloaded version of 'unsafeAt', which
+accepts any 'Integral' value as the position. If the element on the given
+position does not exist it throws the exception at run-time.
+
+>>> let sl = slist [1..10]
+>>> genericUnsafeAt 0 sl
+1
+>>> genericUnsafeAt (-1) sl
+*** Exception: Slist.genericUnsafeAt: negative argument
+>>> genericUnsafeAt 11 sl
+*** Exception: Slist.genericUnsafeAt: index too large
+>>> genericUnsafeAt 9 sl
+10
+-}
+genericUnsafeAt :: Integral i => i -> Slist a -> a
+genericUnsafeAt i _ | i < 0 = errorWithoutStackTrace "Slist.genericUnsafeAt: negative argument"
+genericUnsafeAt i (Slist l Infinity) = L.genericIndex l i
+genericUnsafeAt i (Slist l (Size n))
+    | i >= fromIntegral n = errorWithoutStackTrace "Slist.genericUnsafeAt: index too large"
+    | otherwise = L.genericIndex l i
+{-# INLINE genericUnsafeAt #-}
+
+{- | @O(n)@.
+The 'genericReplicate' function is an overloaded version of 'replicate',
+which accepts any 'Integral' value as the number of repetitions to make.
+
+>>> genericReplicate 3 'o'
+Slist {sList = "ooo", sSize = Size 3}
+>>> genericReplicate (-11) "hmm"
+Slist {sList = [], sSize = Size 0}
+-}
+genericReplicate :: Integral i => i -> a -> Slist a
+genericReplicate n x
+    | n <= 0 = mempty
+    | otherwise = Slist (L.genericReplicate n x) $ Size (fromIntegral n)
+{-# INLINE genericReplicate #-}
