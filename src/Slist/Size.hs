@@ -26,7 +26,7 @@ data Size
     = Size !Int
     -- | Infinite size.
     | Infinity
-    deriving (Show, Read, Eq, Ord)
+    deriving stock (Show, Read, Eq, Ord)
 
 {- | Efficient implementations of numeric operations with 'Size's.
 
