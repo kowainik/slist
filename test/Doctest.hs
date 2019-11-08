@@ -10,4 +10,5 @@ main = do
         $ "-XInstanceSigs"
         : "-XScopedTypeVariables"
         : "-XRecordWildCards"
+        : "-XDerivingStrategies"
         : sourceFiles
