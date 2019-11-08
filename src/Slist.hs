@@ -227,7 +227,7 @@ Size can be both finite or infinite, it is established using
 data Slist a = Slist
     { sList :: [a]
     , sSize :: Size
-    } deriving (Show, Read)
+    } deriving stock (Show, Read)
 
 {- | Equality of sized lists is checked more efficiently
 due to the fact that the check on the list sizes can be
