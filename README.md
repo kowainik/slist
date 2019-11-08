@@ -1,8 +1,10 @@
 # slist
 
-[![Hackage](https://img.shields.io/hackage/v/slist.svg?logo=haskell)](https://hackage.haskell.org/package/slist)
-[![MPL-2.0 license](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
 [![Build status](https://img.shields.io/travis/vrom911/slist.svg?logo=travis)](https://travis-ci.org/vrom911/slist)
+[![Hackage](https://img.shields.io/hackage/v/slist.svg?logo=haskell)](https://hackage.haskell.org/package/slist)
+[![Stackage LTS](http://stackage.org/package/slist/badge/lts)](http://stackage.org/lts/package/slist)
+[![Stackage Nightly](http://stackage.org/package/slist/badge/nightly)](http://stackage.org/nightly/package/slist)
+[![MPL-2.0 license](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
 
 This package introduces sized list data type — `Slist`. The data type
 has the following shape:
@@ -14,7 +16,7 @@ data Slist a = Slist
     }
 ```
 
-As you can see along with the familiar list, it contains `Size` field that
+As you can see that along with the familiar list, it contains `Size` field that
 represents the size of the structure. Slists can be finite or infinite, and this
 is expressed with `Size`.
 

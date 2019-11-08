@@ -3,6 +3,8 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
 
+{- HLINT ignore "Use mconcat" -}
+
 {- |
 Copyright:  (c) 2019 vrom911
 License:    MPL-2.0
@@ -356,7 +358,7 @@ instance Foldable Slist where
 
 instance Traversable Slist where
     traverse :: (Applicative f) => (a -> f b) -> Slist a -> f (Slist b)
-    traverse f (Slist l s) = (\x -> Slist x s) <$> traverse f l
+    traverse f (Slist l s) = (`Slist` s) <$> traverse f l
     {-# INLINE traverse #-}
 
 instance L.IsList (Slist a) where
@@ -828,7 +830,7 @@ Slist {sList = [Slist {sList = "abc", sSize = Size 3},Slist {sList = "bac", sSiz
 -}
 permutations :: Slist a -> Slist (Slist a)
 permutations (Slist l s) = Slist
-    { sList = P.map (\a -> Slist a s) $ L.permutations l
+    { sList = P.map (`Slist` s) $ L.permutations l
     , sSize = fact s
     }
   where
@@ -1272,7 +1274,7 @@ Use 'safeIsPrefixOf' instead.
 isPrefixOf :: Eq a => Slist a -> Slist a -> Bool
 isPrefixOf (Slist l1 s1) (Slist l2 s2)
     | s1 > s2 = False
-    | otherwise = L.isPrefixOf l1 l2
+    | otherwise = l1 `L.isPrefixOf` l2
 {-# INLINE isPrefixOf #-}
 
 {- | Similar to 'isPrefixOf', but never hangs on infinite lists
@@ -1286,7 +1288,7 @@ False
 safeIsPrefixOf :: Eq a => Slist a -> Slist a -> Bool
 safeIsPrefixOf sl1@(Slist _ s1) sl2@(Slist _ s2)
     | s1 == Infinity && s2 == Infinity = False
-    | otherwise = isPrefixOf sl1 sl2
+    | otherwise = sl1 `isPrefixOf` sl2
 {-# INLINE safeIsPrefixOf #-}
 
 {- |
@@ -1312,7 +1314,7 @@ Use 'safeIsSuffixOf' instead.
 isSuffixOf :: Eq a => Slist a -> Slist a -> Bool
 isSuffixOf (Slist l1 s1) (Slist l2 s2)
     | s1 > s2 = False
-    | otherwise = L.isSuffixOf l1 l2
+    | otherwise = l1 `L.isSuffixOf` l2
 {-# INLINE isSuffixOf #-}
 
 {- | Similar to 'isSuffixOf', but never hangs on infinite lists
@@ -1326,7 +1328,7 @@ False
 safeIsSuffixOf :: Eq a => Slist a -> Slist a -> Bool
 safeIsSuffixOf sl1 sl2@(Slist _ s2)
     | s2 == Infinity = False
-    | otherwise = isSuffixOf sl1 sl2
+    | otherwise = sl1 `isSuffixOf` sl2
 {-# INLINE safeIsSuffixOf #-}
 
 {- |
@@ -1352,7 +1354,7 @@ Use 'safeIsInfixOf' instead.
 isInfixOf :: Eq a => Slist a -> Slist a -> Bool
 isInfixOf (Slist l1 s1) (Slist l2 s2)
     | s1 > s2 = False
-    | otherwise = L.isInfixOf l1 l2
+    | otherwise = l1 `L.isInfixOf` l2
 {-# INLINE isInfixOf #-}
 
 {- | Similar to 'isInfixOf', but never hangs on infinite lists
@@ -1366,7 +1368,7 @@ False
 safeIsInfixOf :: Eq a => Slist a -> Slist a -> Bool
 safeIsInfixOf sl1@(Slist _ s1) sl2@(Slist _ s2)
     | s1 == Infinity && s2 == Infinity = False
-    | otherwise = isInfixOf sl1 sl2
+    | otherwise = sl1 `isInfixOf` sl2
 {-# INLINE safeIsInfixOf #-}
 
 {- |

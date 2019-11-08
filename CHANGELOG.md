@@ -18,6 +18,8 @@ The changelog is available [on GitHub][2].
 * Make `dropWhile` work better on infinite lists.
   (by @chshersh)
 * Support GHC-8.6.5 instead os GHC-8.6.3.
+* [#6](https://github.com/vrom911/slist/issues/6):
+  Build with Stack.
 
 ## 0.0.0
 
