@@ -68,6 +68,8 @@ test-suite slist-test
   main-is:             Spec.hs
 
   build-depends:       slist
+                     , hedgehog
+                     , hedgehog-classes
 
   ghc-options:         -threaded
                        -rtsopts
