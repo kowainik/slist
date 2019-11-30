@@ -3,6 +3,10 @@
 `slist` uses [PVP Versioning][1].
 The changelog is available [on GitHub][2].
 
+## Unreleased
+
+* Fix `mconcat` for `Slist` `Monoid` instance.
+
 ## 0.1.0.0
 
 * [#13](https://github.com/vrom911/slist/issues/13):

@@ -266,7 +266,7 @@ instance Monoid (Slist a) where
       where
         -- foldr :: (a -> ([a], Size) -> ([a], Size)) -> ([a], Size) -> [Slist a] -> ([a], Size)
         f :: Slist a -> ([a], Size) -> ([a], Size)
-        f (Slist l s) (xL, !xS) = (xL ++ l, s + xS)
+        f (Slist l s) (xL, !xS) = (l ++ xL, s + xS)
     {-# INLINE mconcat #-}
 
 instance Functor Slist where
