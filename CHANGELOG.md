@@ -8,6 +8,7 @@ The changelog is available [on GitHub][2].
 * Fix `mconcat` for `Slist` `Monoid` instance.
 * [#25](https://github.com/vrom911/slist/issues/25):
   Support GHC-8.10.
+* Update to GHC-8.8.3 from GHC-8.8.1.
 
 ## 0.1.0.0
 
