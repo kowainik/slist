@@ -6,6 +6,9 @@ The changelog is available [on GitHub][2].
 ## Unreleased
 
 * Fix `mconcat` for `Slist` `Monoid` instance.
+* [#25](https://github.com/vrom911/slist/issues/25):
+  Support GHC-8.10.
+* Update to GHC-8.8.3 from GHC-8.8.1.
 
 ## 0.1.0.0
 
@@ -21,7 +24,7 @@ The changelog is available [on GitHub][2].
   (by @waynee95)
 * Make `dropWhile` work better on infinite lists.
   (by @chshersh)
-* Support GHC-8.6.5 instead os GHC-8.6.3.
+* Support GHC-8.6.5 instead of GHC-8.6.3.
 * [#6](https://github.com/vrom911/slist/issues/6):
   Build with Stack.
 
