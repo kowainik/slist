@@ -1,9 +1,15 @@
--- | Lists size representation
+{- |
+Copyright:  (c) 2019-2020 Veronika Romashkina
+License:    MPL-2.0
+Maintainer: Veronika Romashkina <vrom911@gmail.com>
+
+Lists size representation.
+-}
 
 module Slist.Size
-       ( Size (..)
-       , sizes
-       ) where
+    ( Size (..)
+    , sizes
+    ) where
 
 
 {- | Data type that represents lists size/lengths.

@@ -6,7 +6,7 @@
 {- HLINT ignore "Use mconcat" -}
 
 {- |
-Copyright:  (c) 2019 vrom911
+Copyright:  (c) 2019-2020 Veronika Romashkina
 License:    MPL-2.0
 Maintainer: Veronika Romashkina <vrom911@gmail.com>
 

@@ -10,7 +10,7 @@ license:             MPL-2.0
 license-file:        LICENSE
 author:              Veronika Romashkina
 maintainer:          vrom911@gmail.com
-copyright:           2019 Veronika Romashkina
+copyright:           2019-2020 Veronika Romashkina
 category:            Data Structures, List
 build-type:          Simple
 extra-doc-files:     README.md
