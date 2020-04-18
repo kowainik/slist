@@ -41,7 +41,7 @@ jobs:
     - name: Build
       run: |
         cabal update
-        cabal build --enable-tests --enable-benchmarks
+        cabal build --enable-tests --enable-benchmarks --write-ghc-environment-files=always
 
     - name: Test
       run: |
