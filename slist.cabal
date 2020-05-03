@@ -72,3 +72,17 @@ test-suite slist-doctest
   build-depends:       doctest
                      , Glob
   ghc-options:         -threaded
+
+test-suite slist-test
+  import:              common-options
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  other-modules:       Test.Slist.Size
+  build-depends:       slist
+                     , hedgehog ^>= 1.0
+                     , hspec
+                     , hspec-hedgehog ^>= 0.0.1
+  ghc-options:         -threaded
+                       -rtsopts
+                       -with-rtsopts=-N
