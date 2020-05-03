@@ -1,3 +1,6 @@
+{- HLINT ignore "Redundant fromInteger" -}
+{- HLINT ignore "Reduce duplication" -}
+
 module Test.Slist.Size
     ( sizeSpec
     ) where
