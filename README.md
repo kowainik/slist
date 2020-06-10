@@ -1,7 +1,7 @@
 # slist
 
-[![GitHub CI](https://github.com/vrom911/slist/workflows/CI/badge.svg)](https://github.com/vrom911/slist/actions)
-[![Build status](https://img.shields.io/travis/vrom911/slist.svg?logo=travis)](https://travis-ci.org/vrom911/slist)
+[![GitHub CI](https://github.com/kowainik/slist/workflows/CI/badge.svg)](https://github.com/kowainik/slist/actions)
+[![Build status](https://img.shields.io/travis/kowainik/slist.svg?logo=travis)](https://travis-ci.org/kowainik/slist)
 [![Hackage](https://img.shields.io/hackage/v/slist.svg?logo=haskell)](https://hackage.haskell.org/package/slist)
 [![Stackage LTS](http://stackage.org/package/slist/badge/lts)](http://stackage.org/lts/package/slist)
 [![Stackage Nightly](http://stackage.org/package/slist/badge/nightly)](http://stackage.org/nightly/package/slist)

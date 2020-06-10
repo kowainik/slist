@@ -4,13 +4,14 @@ version:             0.1.1.0
 synopsis:            Sized list
 description:         This package implements @Slist@ data structure that stores the size
                      of the list along with the list itself.
-homepage:            https://github.com/vrom911/slist
-bug-reports:         https://github.com/vrom911/slist/issues
+homepage:            https://github.com/kowainik/slist
+bug-reports:         https://github.com/kowainik/slist/issues
 license:             MPL-2.0
 license-file:        LICENSE
 author:              Veronika Romashkina
-maintainer:          vrom911@gmail.com
+maintainer:          Kowainik <xrom.xkov@gmail.com>
 copyright:           2019-2020 Veronika Romashkina
+                     2020 Kowainik
 category:            Data Structures, List
 build-type:          Simple
 extra-doc-files:     README.md
@@ -23,7 +24,7 @@ tested-with:         GHC == 8.2.2
 
 source-repository head
   type:                git
-  location:            https://github.com/vrom911/slist.git
+  location:            https://github.com/kowainik/slist.git
 
 common common-options
   build-depends:       base >= 4.10.1.0 && < 4.15

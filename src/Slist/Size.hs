@@ -1,7 +1,8 @@
 {- |
 Copyright:  (c) 2019-2020 Veronika Romashkina
+            (c) 2020 Kowainik
 License:    MPL-2.0
-Maintainer: Veronika Romashkina <vrom911@gmail.com>
+Maintainer: Kowainik <xrom.xkov@gmail.com>
 
 Lists size representation.
 -}
