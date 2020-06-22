@@ -112,6 +112,8 @@ module Slist
        , transpose
        , subsequences
        , permutations
+       , chunksOf
+
 
          -- *  Reducing slists (folds)
        , concat
@@ -2065,3 +2067,12 @@ genericReplicate n x
     | n <= 0 = mempty
     | otherwise = Slist (L.genericReplicate n x) $ Size (fromIntegral n)
 {-# INLINE genericReplicate #-}
+
+
+{- | @O(n)@. Splits the given slist into a slist of slists.
+
+> chunksOf 3 (slist [0..7]) == slist [slist [0,1,2], slist [3,4,5], slist [6,7]]
+
+-}
+chunksOf :: Int -> Slist a -> Slist (Slist a)
+chunksOf n xs = takeWhile (not.null) $ unfoldr (Just . splitAt n) xs
