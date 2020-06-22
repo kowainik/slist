@@ -5,6 +5,9 @@ The changelog is available [on GitHub][2].
 
 ## Unreleased
 
+* [#30](https://github.com/kowainik/slist/issues/30):
+  Add the `cons` function.
+
 ## 0.1.1.0 — Apr 18, 2020
 
 * Fix `mconcat` for `Slist` `Monoid` instance.

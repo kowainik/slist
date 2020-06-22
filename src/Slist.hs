@@ -101,6 +101,7 @@ module Slist
        , safeLast
        , init
        , tail
+       , cons
        , uncons
 
          -- * Transformations
@@ -671,6 +672,21 @@ init sl@Slist{..} = case sSize of
     Size 0   -> mempty
     _        -> Slist (P.init sList) (sSize - 1)
 {-# INLINE init #-}
+
+{- | @O(1)@. 'cons' is 'Slist' analogue to ':' for lists.
+It adds the given element to the beginning of the list.
+
+>>> cons 'a' $ one 'b'
+Slist {sList = "ab", sSize = Size 2}
+
+@
+>> __'cons' 0 $ 'infiniteSlist' [1..]__
+Slist {sList = [0..], sSize = 'Infinity'}
+@
+-}
+cons :: a -> Slist a -> Slist a
+cons x (Slist xs s) = Slist (x:xs) $ s + 1
+{-# INLINE cons #-}
 
 {- | @O(1)@. Decomposes a slist into its head and tail.
 If the slist is empty, returns 'Nothing'.
