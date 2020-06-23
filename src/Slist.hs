@@ -102,6 +102,7 @@ module Slist
        , init
        , tail
        , cons
+       , cons'
        , uncons
 
          -- * Transformations
@@ -676,6 +677,14 @@ init sl@Slist{..} = case sSize of
 {- | @O(1)@. 'cons' is 'Slist' analogue to ':' for lists.
 It adds the given element to the beginning of the list.
 
+The following property is preserved:
+
+@
+  'size' ('cons' x xs) == 'size' xs + 1
+@
+
+Examples:
+
 >>> cons 'a' $ one 'b'
 Slist {sList = "ab", sSize = Size 2}
 
@@ -687,6 +696,29 @@ Slist {sList = [0..], sSize = 'Infinity'}
 cons :: a -> Slist a -> Slist a
 cons x (Slist xs s) = Slist (x:xs) $ s + 1
 {-# INLINE cons #-}
+
+{- | @O(1)@. Strict version of the 'cons' function
+(in terms of the size evaluation).
+
+The following property is preserved:
+
+@
+  'size' ('cons'' x xs) == 'size' xs + 1
+@
+
+Examples:
+
+>>> cons' 'a' $ one 'b'
+Slist {sList = "ab", sSize = Size 2}
+
+@
+>> __cons' 0 $ 'infiniteSlist' [1..]__
+Slist {sList = [0..], sSize = 'Infinity'}
+@
+-}
+cons' :: a -> Slist a -> Slist a
+cons' x (Slist xs !s) = let !newSize = s + 1 in Slist (x:xs) newSize
+{-# INLINE cons' #-}
 
 {- | @O(1)@. Decomposes a slist into its head and tail.
 If the slist is empty, returns 'Nothing'.
