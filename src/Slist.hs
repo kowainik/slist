@@ -147,6 +147,7 @@ module Slist
     , groupBy
     , inits
     , tails
+    , chunksOf
       -- ** Predicates
     , isPrefixOf
     , safeIsPrefixOf
@@ -943,6 +944,30 @@ and second element is the remainder of the list.
 break :: (a -> Bool) -> Slist a -> (Slist a, Slist a)
 break p = span (not . p)
 {-# INLINE break #-}
+
+{- | @O(n)@. Splits a 'Slist' into components of the given length. The last
+element may be shorter than the other chunks, depending on the length of the
+input.
+
+>>> chunksOf 3 $ slist [0..7]
+Slist {sList = [Slist {sList = [0,1,2], sSize = Size 3},Slist {sList = [3,4,5], sSize = Size 3},Slist {sList = [6,7], sSize = Size 2}], sSize = Size 3}
+>>>chunksOf 0 $ slist [0..10]
+Slist {sList = [], sSize = Size 0}
+>>>chunksOf (-13) $ slist [0..10]
+Slist {sList = [], sSize = Size 0}
+>>>chunksOf 100 $ slist [1,2,3]
+Slist {sList = [Slist {sList = [1,2,3], sSize = Size 3}], sSize = Size 1}
+
+@since x.x.x.x
+-}
+chunksOf :: Int -> Slist a -> Slist (Slist a)
+chunksOf i sl@Slist{..}
+    | i <= 0 = mempty
+    | Size i >= sSize = one sl
+    | otherwise =
+        let (chunk, rest) = splitAt i sl
+        in cons chunk $ chunksOf i rest
+{-# INLINE chunksOf #-}
 
 {- | @O(m)@. Drops the given prefix from a list.
 It returns 'Nothing' if the slist did not start with the given prefix,
