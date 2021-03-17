@@ -5,6 +5,8 @@ The changelog is available [on GitHub][2].
 
 ## Unreleased
 
+* [#45](https://github.com/kowainik/slist/issues/45):
+  Support GHC-9.0. Update older GHC's bounds.
 * [#30](https://github.com/kowainik/slist/issues/30):
   Add the `cons` function.
 
