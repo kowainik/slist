@@ -223,6 +223,7 @@ import Data.Bifunctor (bimap, first, second)
 #if ( __GLASGOW_HASKELL__ == 802 )
 import Data.Semigroup (Semigroup (..))
 #endif
+import GHC.Exts (fromListN)
 import Prelude hiding (break, concat, concatMap, cycle, drop, dropWhile, filter, head, init,
                 iterate, last, lookup, map, repeat, replicate, reverse, scanl, scanl1, scanr,
                 scanr1, span, splitAt, tail, take, takeWhile, unzip, unzip3, zip, zip3, zipWith,
@@ -967,7 +968,7 @@ Slist {sList = [Slist {sList = [1,2,3], sSize = Size 3},Slist {sList = [4,5,6], 
 chunksOf :: Int -> Slist a -> Slist (Slist a)
 chunksOf i sl@Slist{..}
     | i <= 0 = mempty
-    | sSize == Infinity = Slist (P.map (\x -> Slist x (Size i)) $ listChunksOf i sList) Infinity
+    | sSize == Infinity = Slist (P.map (fromListN i) $ listChunksOf i sList) Infinity
     | otherwise = go sl
   where
     go :: Slist a -> Slist (Slist a)
