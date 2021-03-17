@@ -9,6 +9,10 @@ The changelog is available [on GitHub][2].
   Support GHC-9.0. Update older GHC's bounds.
 * [#30](https://github.com/kowainik/slist/issues/30):
   Add the `cons` function.
+* [#29](https://github.com/kowainik/slist/issues/45):
+  Add `Slist.Maybe` module with `maybeToSlist`, `slistToMaybe`, `catMaybes`,
+  `mapMaybe`, `slistWith` functions.
+* Move the `Slist` data type into the separate `Slist.Type` module.
 
 ## 0.1.1.0 — Apr 18, 2020
 
