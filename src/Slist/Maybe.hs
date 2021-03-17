@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
+
 {- |
 Copyright:  (c) 2021 Kowainik
 SPDX-License-Identifier: MPL-2.0
@@ -16,7 +18,12 @@ module Slist.Maybe
     , slistWith
     ) where
 
+import Data.Bifunctor (second)
+
+import Slist.Size (Size (..))
 import Slist.Type (Slist (..), cons, one)
+
+import qualified Data.Maybe as M
 
 
 {- | Returns an empty list when given 'Nothing' or a singleton list when given
@@ -28,8 +35,7 @@ Slist {sList = [42], sSize = Size 1}
 Slist {sList = [], sSize = Size 0}
 -}
 maybeToSlist :: Maybe a -> Slist a
-maybeToSlist Nothing  = mempty
-maybeToSlist (Just x) = one x
+maybeToSlist = maybe mempty one
 {-# INLINE maybeToSlist #-}
 
 {- | Returns 'Nothing' on an empty list or @'Just' a@ where @a@ is the first
@@ -57,7 +63,7 @@ slistToMaybe . maybeToList ≡ id
 Reverse is right only on singleton/empty lists
 
 @
-maybeToList . slistToMaybe {empty, singleton slist} = id
+maybeToList . slistToMaybe {empty, singleton slist} ≡ {empty, singleton slist}
 @
 -}
 slistToMaybe :: Slist a -> Maybe a
@@ -94,6 +100,7 @@ Slist {sList = [1,2,3], sSize = Size 3}
 -}
 mapMaybe :: forall b a . (a -> Maybe b) -> Slist a -> Slist b
 mapMaybe _ (Slist [] _) = mempty
+mapMaybe f (Slist xs Infinity) = Slist (M.mapMaybe f xs) Infinity
 mapMaybe f (Slist (x:xs) n) = case f x of
     Nothing -> rest
     Just r  -> cons r rest
@@ -110,13 +117,13 @@ mapMaybe f (Slist (x:xs) n) = case f x of
 Slist {sList = [2], sSize = Size 1}
 -}
 slistWith :: forall b a . (a -> Maybe b) -> [a] -> Slist b
-slistWith _ [] = mempty
-slistWith f (x:xs) = case f x of
-    Nothing -> rest
-    Just r  -> cons r rest
+slistWith f l = let (n, sl) = go 0 l in Slist sl (Size n)
   where
-    rest :: Slist b
-    rest = slistWith f xs
+    go :: Int -> [a] -> (Int, [b])
+    go !accSize [] = (accSize, [])
+    go !accSize (x:xs) = case f x of
+        Nothing -> go accSize xs
+        Just r  -> second (r:) $ go (accSize + 1) xs
 
 -- {-# RULES
 -- "mapMaybe"     [~1] forall f xs. mapMaybe f xs
