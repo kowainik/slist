@@ -51,7 +51,7 @@ Just 1
 __Laws__ :
 
 @
-slistToMaybe . maybeToList = id
+slistToMaybe . maybeToList ≡ id
 @
 
 Reverse is right only on singleton/empty lists
