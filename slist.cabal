@@ -64,7 +64,9 @@ library
   import:              common-options
   hs-source-dirs:      src
   exposed-modules:     Slist
+                         Slist.Maybe
                          Slist.Size
+                         Slist.Type
 
 test-suite slist-doctest
   import:              common-options
