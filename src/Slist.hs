@@ -148,6 +148,7 @@ module Slist
     , inits
     , tails
     , chunksOf
+    , listChunksOf
       -- ** Predicates
     , isPrefixOf
     , safeIsPrefixOf
@@ -951,23 +952,61 @@ input.
 
 >>> chunksOf 3 $ slist [0..7]
 Slist {sList = [Slist {sList = [0,1,2], sSize = Size 3},Slist {sList = [3,4,5], sSize = Size 3},Slist {sList = [6,7], sSize = Size 2}], sSize = Size 3}
->>>chunksOf 0 $ slist [0..10]
+>>> chunksOf 0 $ slist [0..10]
 Slist {sList = [], sSize = Size 0}
->>>chunksOf (-13) $ slist [0..10]
+>>> chunksOf (-13) $ slist [0..10]
 Slist {sList = [], sSize = Size 0}
->>>chunksOf 100 $ slist [1,2,3]
+>>> chunksOf 100 $ slist [1,2,3]
 Slist {sList = [Slist {sList = [1,2,3], sSize = Size 3}], sSize = Size 1}
+
+>>> take 2 $ chunksOf 3 $ infiniteSlist [1..]
+Slist {sList = [Slist {sList = [1,2,3], sSize = Size 3},Slist {sList = [4,5,6], sSize = Size 3}], sSize = Size 2}
 
 @since x.x.x.x
 -}
 chunksOf :: Int -> Slist a -> Slist (Slist a)
 chunksOf i sl@Slist{..}
     | i <= 0 = mempty
-    | Size i >= sSize = one sl
-    | otherwise =
-        let (chunk, rest) = splitAt i sl
-        in cons chunk $ chunksOf i rest
+    | sSize == Infinity = Slist (P.map (\x -> Slist x (Size i)) $ listChunksOf i sList) Infinity
+    | otherwise = go sl
+  where
+    go :: Slist a -> Slist (Slist a)
+    go x@(Slist _ s)
+        | Size i >= s = one x
+        | otherwise =
+            let (chunk, rest) = splitAt i x
+            in cons chunk $ go rest
 {-# INLINE chunksOf #-}
+
+{- | @O(n)@. Splits a list into components of the given length. The last
+element may be shorter than the other chunks, depending on the length of the
+input.
+
+>>> listChunksOf 3 [0..7]
+[[0,1,2],[3,4,5],[6,7]]
+>>> listChunksOf 0 [0..10]
+[]
+>>> listChunksOf (-13) [0..10]
+[]
+>>> listChunksOf 100 [1,2,3]
+[[1,2,3]]
+
+>>> P.take 2 $ listChunksOf 3 [1..]
+[[1,2,3],[4,5,6]]
+
+@since x.x.x.x
+-}
+listChunksOf :: Int -> [a] -> [[a]]
+listChunksOf i l
+    | i <= 0 = mempty
+    | otherwise = go l
+  where
+    go :: [a] -> [[a]]
+    go [] = []
+    go x =
+        let (chunk, rest) = P.splitAt i x
+        in chunk : go rest
+{-# INLINE listChunksOf #-}
 
 {- | @O(m)@. Drops the given prefix from a list.
 It returns 'Nothing' if the slist did not start with the given prefix,

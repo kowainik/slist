@@ -13,7 +13,7 @@ The changelog is available [on GitHub][2].
   Add `Slist.Maybe` module with `maybeToSlist`, `slistToMaybe`, `catMaybes`,
   `mapMaybe`, `slistWith` functions.
 * [#24](https://github.com/kowainik/slist/issues/24):
-  Add `chunksOf`.
+  Add `chunksOf` for `Slist` and `listChunksOf` for ordinary lists.
 * Move the `Slist` data type into the separate `Slist.Type` module.
 
 ## 0.1.1.0 — Apr 18, 2020
