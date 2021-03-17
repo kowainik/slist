@@ -11,7 +11,7 @@ license-file:        LICENSE
 author:              Veronika Romashkina
 maintainer:          Kowainik <xrom.xkov@gmail.com>
 copyright:           2019-2020 Veronika Romashkina
-                     2020 Kowainik
+                     2020-2021 Kowainik
 category:            Data Structures, List
 build-type:          Simple
 extra-doc-files:     README.md
@@ -19,15 +19,16 @@ extra-doc-files:     README.md
 tested-with:         GHC == 8.2.2
                    , GHC == 8.4.4
                    , GHC == 8.6.5
-                   , GHC == 8.8.3
-                   , GHC == 8.10.1
+                   , GHC == 8.8.4
+                   , GHC == 8.10.4
+                   , GHC == 9.0.1
 
 source-repository head
   type:                git
   location:            https://github.com/kowainik/slist.git
 
 common common-options
-  build-depends:       base >= 4.10.1.0 && < 4.15
+  build-depends:       base >= 4.10.1.0 && < 4.16
 
   ghc-options:         -Wall
                        -Wincomplete-uni-patterns
@@ -84,7 +85,6 @@ test-suite slist-test
                      , hedgehog ^>= 1.0
                      , hspec
                      , hspec-hedgehog ^>= 0.0.1
-                     , splitmix < 0.0.5
   ghc-options:         -threaded
                        -rtsopts
                        -with-rtsopts=-N
