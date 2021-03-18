@@ -7,6 +7,8 @@ The changelog is available [on GitHub][2].
 
 * [#45](https://github.com/kowainik/slist/issues/45):
   Support GHC-9.0. Update older GHC's bounds.
+* [#36](https://github.com/kowainik/slist/issues/36):
+  Add strict functions: `append'`, `concat'` and `concatMap'`.
 * [#30](https://github.com/kowainik/slist/issues/30):
   Add the `cons` function.
 * [#34](https://github.com/kowainik/slist/issues/34):
