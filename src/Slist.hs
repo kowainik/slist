@@ -199,6 +199,7 @@ module Slist
     , sort
     , sortBy
     , sortOn
+    , sortWith
     , insert
     , insertBy
 
@@ -234,6 +235,7 @@ import Slist.Size (Size (..), sizes)
 import Slist.Type (Slist (..), cons, infiniteSlist, isEmpty, len, map, one, size, slist)
 
 import qualified Data.List as L
+import qualified GHC.Exts as Exts
 import qualified Prelude as P
 
 
@@ -1749,6 +1751,22 @@ Slist {sList = [(1,"Hello"),(2,"world"),(4,"!")], sSize = Size 3}
 sortOn :: Ord b => (a -> b) -> Slist a -> Slist a
 sortOn f Slist{..} = Slist (L.sortOn f sList) sSize
 {-# INLINE sortOn #-}
+
+{- |@O(n log n)@.
+Sorts a list by comparing the results of a key function applied to each
+element.
+
+Elements are arranged from lowest to highest, keeping duplicates in
+the order they appeared in the input.
+
+>>> sortWith fst $ slist [(2, "world"), (4, "!"), (1, "Hello")]
+Slist {sList = [(1,"Hello"),(2,"world"),(4,"!")], sSize = Size 3}
+
+@since x.x.x.x
+-}
+sortWith :: Ord b => (a -> b) -> Slist a -> Slist a
+sortWith f Slist{..} = Slist (Exts.sortWith f sList) sSize
+{-# INLINE sortWith #-}
 
 {- | @O(n)@.
 Takes an element and a slist and inserts the element into the slist

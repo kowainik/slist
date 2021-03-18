@@ -12,6 +12,8 @@ The changelog is available [on GitHub][2].
 * [#29](https://github.com/kowainik/slist/issues/29):
   Add `Slist.Maybe` module with `maybeToSlist`, `slistToMaybe`, `catMaybes`,
   `mapMaybe`, `slistWith` functions.
+* [#31](https://github.com/kowainik/slist/issues/31):
+  Add `sortWith`.
 * [#24](https://github.com/kowainik/slist/issues/24):
   Add `chunksOf` for `Slist` and `listChunksOf` for ordinary lists.
 * Move the `Slist` data type into the separate `Slist.Type` module.
