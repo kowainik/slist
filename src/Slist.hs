@@ -1752,7 +1752,7 @@ sortOn :: Ord b => (a -> b) -> Slist a -> Slist a
 sortOn f Slist{..} = Slist (L.sortOn f sList) sSize
 {-# INLINE sortOn #-}
 
-{- |@O(n log n)@.
+{- | @O(n log n)@.
 Sorts a list by comparing the results of a key function applied to each
 element.
 
