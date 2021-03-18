@@ -10,7 +10,12 @@ The changelog is available [on GitHub][2].
 * [#36](https://github.com/kowainik/slist/issues/36):
   Add strict functions: `append'`, `concat'` and `concatMap'`.
 * [#30](https://github.com/kowainik/slist/issues/30):
-  Add the `cons` function.
+  Add `cons` and `cons'` functions.
+* [#35](https://github.com/kowainik/slist/issues/35):
+  Add integration with the `containers` library: `mapToKeys`, `mapToVals`,
+  `mapToPairs`, `setToSlist`.
+
+  Add `ordNub`.
 * [#34](https://github.com/kowainik/slist/issues/34):
   Add `partitionWith` and `listPartitionWith`.
 * [#29](https://github.com/kowainik/slist/issues/29):

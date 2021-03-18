@@ -62,8 +62,10 @@ common common-options
 
 library
   import:              common-options
+  build-depends:       containers >= 0.5 && <= 0.7
   hs-source-dirs:      src
   exposed-modules:     Slist
+                         Slist.Containers
                          Slist.Maybe
                          Slist.Size
                          Slist.Type
