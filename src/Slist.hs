@@ -103,6 +103,7 @@ module Slist
     , safeLast
     , init
     , tail
+    , append'
     , cons
     , cons'
     , uncons
@@ -119,7 +120,9 @@ module Slist
 
       -- *  Reducing slists (folds)
     , concat
+    , concat'
     , concatMap
+    , concatMap'
 
       -- * Building slists
       -- ** Scans
@@ -224,6 +227,7 @@ module Slist
 
 import Data.Bifunctor (bimap, first, second)
 import Data.Either (partitionEithers)
+import Data.Foldable (foldl')
 #if ( __GLASGOW_HASKELL__ == 802 )
 import Data.Semigroup (Semigroup (..))
 #endif
@@ -462,6 +466,18 @@ init sl@Slist{..} = case sSize of
     _        -> Slist (P.init sList) (sSize - 1)
 {-# INLINE init #-}
 
+{- | Strict version of the 'Slist' appending operator '<>'.
+
+@since x.x.x.x
+-}
+append' :: Slist a -> Slist a -> Slist a
+append' sl1 sl2
+    | sSize sl1 == 0 = sl2
+    | sSize sl2 == 0 = sl1
+    | otherwise = let !newSize = sSize sl1 + sSize sl2 in Slist
+        { sList = sList sl1 <> sList sl2
+        , sSize = newSize
+        }
 
 {- | @O(1)@. Strict version of the 'cons' function
 (in terms of the size evaluation).
@@ -659,13 +675,31 @@ permutations (Slist l s) = Slist
 Slist {sList = [1,2,3,4,5,6,7,8,9,10], sSize = Size 10}
 
 @
->> __ concat $ slist [slist [1,2], 'infiniteSlist' [3..]]__
+>> __concat $ slist [slist [1,2], 'infiniteSlist' [3..]]__
 Slist {sList = [1..], sSize = 'Infinity'}
 @
 -}
 concat :: Foldable t => t (Slist a) -> Slist a
 concat = foldr (<>) mempty
 {-# INLINE concat #-}
+
+{- | \( O(\sum n_i) \) The concatenation of all the elements of a container of slists.
+
+The strict version of 'concat'.
+
+>>> concat' [slist [1,2], slist [3..5], slist [6..10]]
+Slist {sList = [1,2,3,4,5,6,7,8,9,10], sSize = Size 10}
+
+@
+>> __concat' $ slist [slist [1,2], 'infiniteSlist' [3..]]__
+Slist {sList = [1..], sSize = 'Infinity'}
+@
+
+@since x.x.x.x
+-}
+concat' :: Foldable t => t (Slist a) -> Slist a
+concat' = foldl' append' mempty
+{-# INLINE concat' #-}
 
 {- | Maps a function over all the elements of a container
 and concatenates the resulting slists.
@@ -676,6 +710,20 @@ Slist {sList = "abc", sSize = Size 3}
 concatMap :: Foldable t => (a -> Slist b) -> t a -> Slist b
 concatMap = foldMap
 {-# INLINE concatMap #-}
+
+{- | Maps a function over all the elements of a container and concatenates the
+resulting slists.
+
+Strict version of 'concatMap'.
+
+>>> concatMap' one "abc"
+Slist {sList = "abc", sSize = Size 3}
+
+@since x.x.x.x
+-}
+concatMap' :: Foldable t => (a -> Slist b) -> t a -> Slist b
+concatMap' f = foldl' (\acc x -> acc `append'` f x) mempty
+{-# INLINE concatMap' #-}
 
 ----------------------------------------------------------------------------
 -- Building lists
