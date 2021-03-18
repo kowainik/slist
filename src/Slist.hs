@@ -481,7 +481,7 @@ init sl@Slist{..} = case sSize of
 
 {- | Strict version of the 'Slist' appending operator '<>'.
 
-@since x.x.x.x
+@since 0.2.0.0
 -}
 append' :: Slist a -> Slist a -> Slist a
 append' sl1 sl2
@@ -510,6 +510,8 @@ Slist {sList = "ab", sSize = Size 2}
 >> __cons' 0 $ 'infiniteSlist' [1..]__
 Slist {sList = [0..], sSize = 'Infinity'}
 @
+
+@since 0.2.0.0
 -}
 cons' :: a -> Slist a -> Slist a
 cons' x (Slist xs !s) = let !newSize = s + 1 in Slist (x:xs) newSize
@@ -708,7 +710,7 @@ Slist {sList = [1,2,3,4,5,6,7,8,9,10], sSize = Size 10}
 Slist {sList = [1..], sSize = 'Infinity'}
 @
 
-@since x.x.x.x
+@since 0.2.0.0
 -}
 concat' :: Foldable t => t (Slist a) -> Slist a
 concat' = foldl' append' mempty
@@ -732,7 +734,7 @@ Strict version of 'concatMap'.
 >>> concatMap' one "abc"
 Slist {sList = "abc", sSize = Size 3}
 
-@since x.x.x.x
+@since 0.2.0.0
 -}
 concatMap' :: Foldable t => (a -> Slist b) -> t a -> Slist b
 concatMap' f = foldl' (\acc x -> acc `append'` f x) mempty
@@ -1029,7 +1031,7 @@ Slist {sList = [Slist {sList = [1,2,3], sSize = Size 3}], sSize = Size 1}
 >>> take 2 $ chunksOf 3 $ infiniteSlist [1..]
 Slist {sList = [Slist {sList = [1,2,3], sSize = Size 3},Slist {sList = [4,5,6], sSize = Size 3}], sSize = Size 2}
 
-@since x.x.x.x
+@since 0.2.0.0
 -}
 chunksOf :: Int -> Slist a -> Slist (Slist a)
 chunksOf i sl@Slist{..}
@@ -1061,7 +1063,7 @@ input.
 >>> P.take 2 $ listChunksOf 3 [1..]
 [[1,2,3],[4,5,6]]
 
-@since x.x.x.x
+@since 0.2.0.0
 -}
 listChunksOf :: Int -> [a] -> [[a]]
 listChunksOf i l
@@ -1410,7 +1412,7 @@ Returns the pair of slists of elements resulting to 'Left' and resulting to
 >>> partitionWith onEven $ slist [1..5]
 (Slist {sList = ["Oops: 1","Oops: 3","Oops: 5"], sSize = Size 3},Slist {sList = [2,4], sSize = Size 2})
 
-@since x.x.x.x
+@since 0.2.0.0
 -}
 partitionWith :: forall a b c . (a -> Either b c) -> Slist a -> (Slist b, Slist c)
 partitionWith f (Slist l Infinity) = bimap infiniteSlist infiniteSlist $ listPartitionWith f l
@@ -1433,7 +1435,7 @@ Returns the pair of lists of elements resulting to 'Left' and resulting to
 >>> listPartitionWith onEven [1..5]
 (["Oops: 1","Oops: 3","Oops: 5"],[2,4])
 
-@since x.x.x.x
+@since 0.2.0.0
 -}
 listPartitionWith :: forall a b c . (a -> Either b c) -> [a] -> ([b], [c])
 listPartitionWith f = partitionEithers . L.map f
@@ -1886,7 +1888,7 @@ the order they appeared in the input.
 >>> sortWith fst $ slist [(2, "world"), (4, "!"), (1, "Hello")]
 Slist {sList = [(1,"Hello"),(2,"world"),(4,"!")], sSize = Size 3}
 
-@since x.x.x.x
+@since 0.2.0.0
 -}
 sortWith :: Ord b => (a -> b) -> Slist a -> Slist a
 sortWith f Slist{..} = Slist (Exts.sortWith f sList) sSize

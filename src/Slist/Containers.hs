@@ -8,7 +8,7 @@ Portability: Portable
 Useful combinators to work with the data structures from @containers@ package
 and 'Slist' together.
 
-@since x.x.x.x
+@since 0.2.0.0
 -}
 module Slist.Containers
     ( -- * Map
@@ -33,7 +33,7 @@ import qualified Data.Set as Set
 {- | @O(n)@.
 Returns a 'Slist' of all values of the map in the ascending order of their keys.
 
-@since x.x.x.x
+@since 0.2.0.0
 -}
 mapToVals :: Map k v -> Slist v
 mapToVals m = Slist
@@ -45,7 +45,7 @@ mapToVals m = Slist
 {- | @O(n)@.
 Returns a 'Slist' of all keys of the map in the ascending order.
 
-@since x.x.x.x
+@since 0.2.0.0
 -}
 mapToKeys :: Map k v -> Slist k
 mapToKeys m = Slist
@@ -57,7 +57,7 @@ mapToKeys m = Slist
 {- | @O(n)@.
 Returns a 'Slist' of all key-value pairs of the map in the ascending order of their keys.
 
-@since x.x.x.x
+@since 0.2.0.0
 -}
 mapToPairs :: Map k v -> Slist (k, v)
 mapToPairs m = Slist
@@ -69,7 +69,7 @@ mapToPairs m = Slist
 {- | @O(n)@.
 Returns a 'Slist' of all elements of the set in the ascending order.
 
-@since x.x.x.x
+@since 0.2.0.0
 -}
 setToSlist :: Set a -> Slist a
 setToSlist s = Slist
