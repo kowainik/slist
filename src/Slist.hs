@@ -191,6 +191,7 @@ module Slist
       -- $sets
     , nub
     , nubBy
+    , ordNub
     , delete
     , deleteBy
     , deleteFirstsBy
@@ -223,6 +224,16 @@ module Slist
     , catMaybes
     , mapMaybe
     , slistWith
+
+      -- * Containers
+      -- ** Map
+    , mapToVals
+    , mapToKeys
+    , mapToPairs
+
+      -- ** Set
+    , setToSlist
+
     ) where
 
 import Data.Bifunctor (bimap, first, second)
@@ -237,11 +248,13 @@ import Prelude hiding (break, concat, concatMap, cycle, drop, dropWhile, filter,
                 scanr1, span, splitAt, tail, take, takeWhile, unzip, unzip3, zip, zip3, zipWith,
                 zipWith3)
 
+import Slist.Containers (mapToKeys, mapToPairs, mapToVals, setToSlist)
 import Slist.Maybe (catMaybes, mapMaybe, maybeToSlist, slistToMaybe, slistWith)
 import Slist.Size (Size (..), sizes)
 import Slist.Type (Slist (..), cons, infiniteSlist, isEmpty, len, map, one, size, slist)
 
 import qualified Data.List as L
+import qualified Data.Set as Set
 import qualified GHC.Exts as Exts
 import qualified Prelude as P
 
@@ -1667,6 +1680,29 @@ nubBy f Slist{..} = let (s, l) = go 0 [] sList in case sSize of
         then go n res xs
         else go (n + 1) (res ++ [x]) xs
 {-# INLINE nubBy #-}
+
+{- | Removes duplicate elements from a slist, keeping only the first occurance of
+the element.
+
+Like 'nub' but runs in \( O(n \log n) \)  time and requires 'Ord'.
+
+>>> ordNub $ slist [3, 3, 3, 2, 2, -1, 1]
+Slist {sList = [3,2,-1,1], sSize = Size 4}
+
+-}
+ordNub :: forall a . (Ord a) => Slist a -> Slist a
+ordNub sl = let (s, l) = go 0 Set.empty (sList sl) in Slist
+    { sList = l
+    , sSize = Size s
+    }
+  where
+    go :: Int -> Set.Set a -> [a] -> (Int, [a])
+    go !i _ []     = (i, [])
+    go i s (x:xs) =
+      if x `Set.member` s
+      then go i s xs
+      else  second (x:) $ go (i + 1) (Set.insert x s) xs
+{-# INLINEABLE ordNub #-}
 
 {- | @O(n)@.
 Removes the first occurrence of the given element from its slist argument.

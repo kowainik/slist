@@ -3,12 +3,14 @@
 {- |
 Copyright:  (c) 2021 Kowainik
 SPDX-License-Identifier: MPL-2.0
-Maintainer: Kowainik <xrom.xkov@gmail.com>
+Maintainer:  Kowainik <xrom.xkov@gmail.com>
 Stability:   Stable
 Portability: Portable
 
 Useful 'Maybe' combinators to work with the 'Maybe' data type and 'Slist'
 together.
+
+@since x.x.x.x
 -}
 module Slist.Maybe
     ( maybeToSlist
@@ -33,6 +35,8 @@ import qualified Data.Maybe as M
 Slist {sList = [42], sSize = Size 1}
 >>> maybeToSlist Nothing
 Slist {sList = [], sSize = Size 0}
+
+@since x.x.x.x
 -}
 maybeToSlist :: Maybe a -> Slist a
 maybeToSlist = maybe mempty one
@@ -65,6 +69,8 @@ Reverse is right only on singleton/empty lists
 @
 maybeToList . slistToMaybe {empty, singleton slist} ≡ {empty, singleton slist}
 @
+
+@since x.x.x.x
 -}
 slistToMaybe :: Slist a -> Maybe a
 slistToMaybe = foldr (const . Just) Nothing
@@ -77,6 +83,8 @@ slistToMaybe = foldr (const . Just) Nothing
 
 >>> catMaybes (cons (Just 1) $ cons Nothing $ one $ Just 3)
 Slist {sList = [1,3], sSize = Size 2}
+
+@since x.x.x.x
 -}
 catMaybes :: Slist (Maybe a) -> Slist a
 catMaybes = mapMaybe id
@@ -97,6 +105,8 @@ If we map the 'Just' constructor, the entire list should be returned:
 
 >>> mapMaybe Just s
 Slist {sList = [1,2,3], sSize = Size 3}
+
+@since x.x.x.x
 -}
 mapMaybe :: forall b a . (a -> Maybe b) -> Slist a -> Slist b
 mapMaybe _ (Slist [] _) = mempty
@@ -115,6 +125,8 @@ mapMaybe f (Slist (x:xs) n) = case f x of
 
 >>> slistWith maybeEven [1,2,3]
 Slist {sList = [2], sSize = Size 1}
+
+@since x.x.x.x
 -}
 slistWith :: forall b a . (a -> Maybe b) -> [a] -> Slist b
 slistWith f l = let (n, sl) = go 0 l in Slist sl (Size n)
