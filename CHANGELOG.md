@@ -9,6 +9,8 @@ The changelog is available [on GitHub][2].
   Support GHC-9.0. Update older GHC's bounds.
 * [#30](https://github.com/kowainik/slist/issues/30):
   Add the `cons` function.
+* [#34](https://github.com/kowainik/slist/issues/34):
+  Add `partitionWith` and `listPartitionWith`.
 * [#29](https://github.com/kowainik/slist/issues/29):
   Add `Slist.Maybe` module with `maybeToSlist`, `slistToMaybe`, `catMaybes`,
   `mapMaybe`, `slistWith` functions.

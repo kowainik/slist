@@ -165,6 +165,8 @@ module Slist
       -- ** Searching with a predicate
     , filter
     , partition
+    , partitionWith
+    , listPartitionWith
 
       -- * Indexing
     , at
@@ -221,6 +223,7 @@ module Slist
     ) where
 
 import Data.Bifunctor (bimap, first, second)
+import Data.Either (partitionEithers)
 #if ( __GLASGOW_HASKELL__ == 802 )
 import Data.Semigroup (Semigroup (..))
 #endif
@@ -1337,6 +1340,43 @@ partition p Slist{..} = let (s1, l1, l2) = go 0 sList in
         then first (x:) $ go (n + 1) xs
         else second (x:) $ go n xs
 {-# INLINE partition #-}
+
+{- | @O(n)@.
+Returns the pair of slists of elements resulting to 'Left' and resulting to
+'Right' by applying the given function.
+
+>>> onEven x = if even x then Right x else Left ("Oops: " ++ show x)
+>>> partitionWith onEven $ slist [1..5]
+(Slist {sList = ["Oops: 1","Oops: 3","Oops: 5"], sSize = Size 3},Slist {sList = [2,4], sSize = Size 2})
+
+@since x.x.x.x
+-}
+partitionWith :: forall a b c . (a -> Either b c) -> Slist a -> (Slist b, Slist c)
+partitionWith f (Slist l Infinity) = bimap infiniteSlist infiniteSlist $ listPartitionWith f l
+partitionWith f Slist{..} = let (s1, l1, l2) = go 0 sList in
+    (Slist l1 $ Size s1, Slist l2 $ sSize - Size s1)
+  where
+    go :: Int -> [a] -> (Int, [b], [c])
+    go !n [] = (n, [], [])
+    go n (x:xs) = case f x of
+        Left  b -> first  (b:) $ go (n + 1) xs
+        Right c -> second (c:) $ go n xs
+{-# INLINE partitionWith #-}
+
+{- | @O(n)@.
+Returns the pair of lists of elements resulting to 'Left' and resulting to
+'Right' by applying the given function.
+
+
+>>> onEven x = if even x then Right x else Left ("Oops: " ++ show x)
+>>> listPartitionWith onEven [1..5]
+(["Oops: 1","Oops: 3","Oops: 5"],[2,4])
+
+@since x.x.x.x
+-}
+listPartitionWith :: forall a b c . (a -> Either b c) -> [a] -> ([b], [c])
+listPartitionWith f = partitionEithers . L.map f
+{-# INLINE listPartitionWith #-}
 
 ----------------------------------------------------------------------------
 -- Indexing
