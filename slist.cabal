@@ -1,6 +1,6 @@
 cabal-version:       2.4
 name:                slist
-version:             0.2.0.0
+version:             0.2.0.1
 synopsis:            Sized list
 description:         This package implements @Slist@ data structure that stores the size
                      of the list along with the list itself.
