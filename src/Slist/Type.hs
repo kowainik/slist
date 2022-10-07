@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeFamilies #-}
 
 {- |
-Copyright:  (c) 2021 Kowainik
+Copyright:  (c) 2021-2022 Kowainik
 SPDX-License-Identifier: MPL-2.0
 Maintainer:  Kowainik <xrom.xkov@gmail.com>
 Stability:   Stable

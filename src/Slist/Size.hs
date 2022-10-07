@@ -1,6 +1,6 @@
 {- |
 Copyright:  (c) 2019-2020 Veronika Romashkina
-            (c) 2020-2021 Kowainik
+            (c) 2020-2022 Kowainik
 SPDX-License-Identifier: MPL-2.0
 Maintainer: Kowainik <xrom.xkov@gmail.com>
 Stability:   Stable
@@ -64,8 +64,8 @@ instance Num Size where
     {-# INLINE (+) #-}
 
     (-) :: Size -> Size -> Size
-    Infinity - _ = Infinity
-    _ - Infinity = Infinity
+    Infinity - _        = Infinity
+    _ - Infinity        = Infinity
     (Size x) - (Size y) = Size (x - y)
     {-# INLINE (-) #-}
 
