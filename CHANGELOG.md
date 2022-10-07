@@ -3,6 +3,12 @@
 `slist` uses [PVP Versioning][1].
 The changelog is available [on GitHub][2].
 
+## Unreleased
+
+* [#53](https://github.com/kowainik/slist/issues/53):
+  Support GHC-9.2.
+* Upgrade `hedgehog` dependency.
+
 ## 0.2.0.0 — Mar 18, 2021
 
 * [#45](https://github.com/kowainik/slist/issues/45):
