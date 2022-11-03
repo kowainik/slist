@@ -133,7 +133,7 @@ slistWith f l = let (n, sl) = go 0 l in Slist sl (Size n)
   where
     go :: Int -> [a] -> (Int, [b])
     go !accSize [] = (accSize, [])
-    go !accSize (x:xs) = case f x of
+    go accSize (x:xs) = case f x of
         Nothing -> go accSize xs
         Just r  -> second (r:) $ go (accSize + 1) xs
 
