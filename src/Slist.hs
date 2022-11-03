@@ -385,6 +385,7 @@ It is recommended to use 'safeHead' instead.
 1
 >>> head mempty
 *** Exception: Prelude.head: empty list
+...
 
 -}
 head :: Slist a -> a
@@ -415,6 +416,7 @@ It is recommended to use 'safeLast' instead
 'y'
 >>> last mempty
 *** Exception: Prelude.last: empty list
+...
 
 @
 >> last $ infiniteSlist [1..]
@@ -677,7 +679,7 @@ permutations (Slist l s) = Slist
 
     go :: Int -> Int -> Int
     go !acc 0 = acc
-    go !acc n = go (acc * n) (n - 1)
+    go acc n  = go (acc * n) (n - 1)
 {-# INLINE permutations #-}
 
 ----------------------------------------------------------------------------
@@ -937,7 +939,7 @@ takeWhile p Slist{..} = let (s, l) = go 0 sList in
   where
     go :: Int -> [a] -> (Int, [a])
     go !n [] = (n, [])
-    go !n (x:xs) =
+    go n (x:xs) =
         if p x
         then let (i, l) = go (n + 1) xs in (i, x:l)
         else (n, [])
@@ -967,7 +969,7 @@ dropWhile p Slist{..} = let (s, l) = go 0 sList in
   where
     go :: Int -> [a] -> (Int, [a])
     go !n [] = (n, [])
-    go !n (x:xs) =
+    go n (x:xs) =
         if p x
         then go (n + 1) xs
         else (n, x:xs)
@@ -997,7 +999,7 @@ span p Slist{..} = let (s, l, r) = go 0 sList in
   where
     go :: Int -> [a] -> (Int, [a], [a])
     go !n [] = (n, [], [])
-    go !n (x:xs) =
+    go n (x:xs) =
         if p x
         then let (s, l, r) = go (n + 1) xs in (s, x:l, r)
         else (n, [], x:xs)
@@ -1476,8 +1478,10 @@ it throws the exception at run-time.
 1
 >>> unsafeAt (-1) sl
 *** Exception: Prelude.!!: negative index
+...
 >>> unsafeAt 11 sl
 *** Exception: Prelude.!!: index too large
+...
 >>> unsafeAt 9 sl
 10
 -}

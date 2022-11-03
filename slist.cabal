@@ -1,6 +1,6 @@
 cabal-version:       2.4
 name:                slist
-version:             0.2.0.1
+version:             0.2.1.0
 synopsis:            Sized list
 description:         This package implements @Slist@ data structure that stores the size
                      of the list along with the list itself.
@@ -23,13 +23,14 @@ tested-with:         GHC == 8.2.2
                    , GHC == 8.10.7
                    , GHC == 9.0.2
                    , GHC == 9.2.4
+                   , GHC == 9.4.2
 
 source-repository head
   type:                git
   location:            https://github.com/kowainik/slist.git
 
 common common-options
-  build-depends:       base >= 4.10.1.0 && < 4.17
+  build-depends:       base >= 4.10.1.0 && < 4.18
 
   ghc-options:         -Wall
                        -Wincomplete-uni-patterns
@@ -43,6 +44,11 @@ common common-options
                        -Werror=missing-deriving-strategies
   if impl(ghc >= 8.10.1)
     ghc-options:       -Wunused-packages
+  if impl(ghc >= 9.0)
+    ghc-options:       -Winvalid-haddock
+  if impl(ghc >= 9.2)
+    ghc-options:       -Wredundant-bang-patterns
+                       -Woperator-whitespace
 
   default-extensions:  ConstraintKinds
                        DeriveGeneric
