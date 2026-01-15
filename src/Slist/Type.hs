@@ -26,7 +26,12 @@ module Slist.Type
     , map
     ) where
 
+#if ( __GLASGOW_HASKELL__ >= 906 )
+import Control.Applicative (Alternative (empty, (<|>)))
+#else
 import Control.Applicative (Alternative (empty, (<|>)), liftA2)
+#endif
+
 #if ( __GLASGOW_HASKELL__ == 802 )
 import Data.Semigroup (Semigroup (..))
 #endif
@@ -140,7 +145,7 @@ instance Foldable Slist where
     foldr f b = foldr f b . sList
     {-# INLINE foldr #-}
 
-    -- | Is the element in the structure?
+    -- Is the element in the structure?
     elem :: (Eq a) => a -> Slist a -> Bool
     elem a = elem a . sList
     {-# INLINE elem #-}

@@ -3,6 +3,10 @@
 `slist` uses [PVP Versioning][1].
 The changelog is available [on GitHub][2].
 
+## 0.2.2.0 – Jan 15, 2026
+
+* Support newer GHCs up untill 9.12.
+
 ## 0.2.1.0 – Nov 3, 2022
 
 * [#56](https://github.com/kowainik/slist/issues/56):

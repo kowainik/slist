@@ -238,7 +238,9 @@ module Slist
 
 import Data.Bifunctor (bimap, first, second)
 import Data.Either (partitionEithers)
+#if ( __GLASGOW_HASKELL__ < 910 )
 import Data.Foldable (foldl')
+#endif
 #if ( __GLASGOW_HASKELL__ == 802 )
 import Data.Semigroup (Semigroup (..))
 #endif
