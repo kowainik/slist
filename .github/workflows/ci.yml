@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        cabal: ["3.8"]
+        cabal: ["3.14"]
         ghc:
           - "8.2.2"
           - "8.4.4"
@@ -28,7 +28,7 @@ jobs:
           - "9.6.7"
           - "9.8.4"
           - "9.10.3"
-          - "9.12.3"
+          - "9.12.2"
 
     steps:
     - uses: actions/checkout@v4
