@@ -3,9 +3,10 @@
 `slist` uses [PVP Versioning][1].
 The changelog is available [on GitHub][2].
 
-## 0.2.2.0 – Jan 15, 2026
+## 0.3.0.0 – Jan 15, 2026
 
-* Support newer GHCs up untill 9.12.
+* Support newer GHCs up to 9.12.
+* Drop support of GHC 8.2, GHC 8.4 and GHC 8.6
 
 ## 0.2.1.0 – Nov 3, 2022
 
